@@ -44,8 +44,10 @@ package frozenlake_pkg
 		input  action_t action,
 		input  logic [ DIM_WIDTH-1:0 ] row, col,
 		output logic [ DIM_WIDTH-1:0 ] next_row, next_col
+		output logic [ STATE_IDX_WIDTH-1:0 ] next_state_idx
 	);
 		next_row, next_col = { row, col };
+		next_state_idx = 'h0;
 
 		case ( action )
 			LEFT:
@@ -61,11 +63,13 @@ package frozenlake_pkg
 				if ( row < DIM-1 )
 					next_row = row + 1;
 		endcase
+
+		next_state_idx = { next_row, next_col };
+
 	endfunction
 
 	function automatic void set_flags(
 		input  game_state_t game_state,
-
 		output logic term,
 		output logic trunc
 	);

@@ -10,32 +10,37 @@ private:
 	static inline const std::string RAND_PATH { "../sim/uniforms-f.txt" };
 	static inline constexpr int RAND_CNT { 1000 };
 
+	// only store quantized rewards
 	std::vector< std::vector<int> > Qtbl {};
 
-	std::vector<float> rand_mem {};
-	std::vector<int> rand_q_mem {};
+	std::vector<float> rand_f_mem {};
+	std::vector<int>   rand_q_mem {};
 	int rand_cnt { 0 };
 	int rand_idx { 0 };
 
 public:
-	float alpha   { 0.5f };
-	float gamma   { 0.5f };
-	float epsilon { 0.2f };
+	float alpha_f   { 0.5f };
+	float gamma_f   { 0.5f };
+	float epsilon_f { 0.2f };
 
-	int max_steps {};
-	int state_cnt { FrozenLake::STATE_CNT };
+	int alpha_q   {};
+	int gamma_q   {};
+	int epsilon_q {};
+
+	int max_steps  {};
+	int state_cnt  { FrozenLake::STATE_CNT };
 	int action_cnt { FrozenLake::ACTION_CNT };
 
 	QLearner(
-		float alpha,
-		float gamma,
-		float epsilon,
+		float alpha_f,
+		float gamma_f,
+		float epsilon_f,
 		int max_steps,
-		int state_cnt, 
+		int state_cnt,
 		int action_cnt 
 	);
 
-	void get_rand( float &rand, int &rand_q );
+	void get_rand( float &rand_f, int &rand_q );
 
 	void train( void );
 
