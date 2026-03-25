@@ -259,6 +259,9 @@ module q_learner
 		Q_next_c = Q_next;
 		Q_tmp_c  = Q_tmp;
 
+		// Normally, read from Q-table at current game state
+		// unless when updating reward
+		//
 		//Qtbl_rd_addr_c = Qtbl_rd_addr;
 		Qtbl_rd_addr = cur_game_state;
 		Qtbl_wr_addr = 'hX;
@@ -362,6 +365,11 @@ module q_learner
 			end
 			S_COUNT_QMAX_ACTIONS:
 			begin
+				// iterate over all actions, increment Qmax_action_idx as
+				// needed (whenever action has shared Qmax).
+				// in a given cycle, Qmax_action_idx <= action (equal if 
+				// all actions share Qmax)
+				//
 				if ( Qtbl_dout[ action ] == state_Qmax )
 				begin
 					Qmax_action_wr_addr = Qmax_action_idx;
@@ -385,6 +393,7 @@ module q_learner
 				choice_c = ( rand_reg * Qmax_action_idx );
 				state_c = S_EXPLOIT_ACTION_SETUP;
 			end
+			// set up Qmax_actions_buf bram read
 			S_EXPLOIT_ACTION_SETUP:
 			begin
 				Qmax_action_idx_c = DEQUANT( choice );
@@ -400,8 +409,6 @@ module q_learner
 			S_TAKE_STEP:
 			begin
 
-				// Qtbl read addr was set to current game state
-				// in S_GET_RAND
 				Q_cur_c = Qtbl_dout[ action ];
 
 				// hardcode FrozenLake
@@ -418,7 +425,7 @@ module q_learner
 					action,
 					row, col,
 					row_c, col_c,
-					next_game_state_c,
+					next_game_state_c[ STATE_WIDTH-1:0 ],
 					Q_next_c,
 					term_c,
 					trunc_c
@@ -434,9 +441,14 @@ module q_learner
 					// read from Qtbl at computed next state
 					//Qtbl_rd_addr_c = next_game_state_c;
 					Qtbl_rd_addr = next_game_state_c;
+
 					Qmax_is_next_c = 1'b1;
+
 					state_Qmax_c = QMIN;
 					action_c = LEFT;
+					// to obtain Qmax in next state when updating reward,
+					// reuse S_FIND_QMAX from exploit datapath, but since
+					// we assert Qmax_is_next, it will return to S_MUL_GAMMA
 					state_c = S_FIND_QMAX;
 				end
 				else
@@ -503,18 +515,20 @@ module q_learner
 				begin
 					pred_wr_en = 1'b1;
 					pred_out = { cur_game_state[ STATE_WIDTH-1:0 ], action, Q_cur };
+					state_c = ( term || trunc )
+						? S_DONE
+						: S_EXPLOIT_GET_RAND;
 				end
-				state_c = ( term || trunc )
-					? S_DONE
-					: S_EXPLOIT_GET_RAND;
 			end
 
 			S_DONE:
 			begin
+				/*
 				if ( rst )
 				begin
 					state_c = S_INIT;
 				end
+				*/
 			end
 
 			default:
@@ -537,13 +551,13 @@ module q_learner
 			Qmax_is_next <= 1'b0;
 			row <= 'h0;
 			col <= 'h0;
-			cur_game_state <= 'h0;
+			cur_game_state  <= 'h0;
 			next_game_state <= 'h0;
-			Q_cur <= 'sh0;
+			Q_cur  <= 'sh0;
 			Q_next <= 'sh0;
-			Q_tmp <= 'sh0;
+			Q_tmp  <= 'sh0;
 			//Qtbl_rd_addr <= 'h0;
-			term <= 1'b0;
+			term  <= 1'b0;
 			trunc <= 1'b0;
 
 			train_done <= 1'b0;
@@ -559,13 +573,13 @@ module q_learner
 			Qmax_is_next <= Qmax_is_next_c;
 			row <= row_c;
 			col <= col_c;
-			cur_game_state <= cur_game_state_c;
+			cur_game_state  <= cur_game_state_c;
 			next_game_state <= next_game_state_c;
-			Q_cur <= Q_cur_c;
+			Q_cur  <= Q_cur_c;
 			Q_next <= Q_next_c;
-			Q_tmp <= Q_tmp_c;
+			Q_tmp  <= Q_tmp_c;
 			//Qtbl_rd_addr <= Qtbl_rd_addr_c;
-			term <= term_c;
+			term  <= term_c;
 			trunc <= trunc_c;
 
 			train_done <= train_done_c;
