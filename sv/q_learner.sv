@@ -7,7 +7,10 @@ module q_learner
 #(
 	parameter int DWIDTH = 32,
 	parameter int ACTION_CNT = 4,
-	parameter int STATE_CNT = 16,
+
+	parameter int DIM = 4,
+	parameter int STATE_CNT = DIM ** 2,
+
 	parameter int REWARD_WIDTH = DWIDTH,
 	parameter logic signed [ DWIDTH-1:0 ] ALPHA,
 	parameter logic signed [ DWIDTH-1:0 ] GAMMA,
@@ -169,7 +172,7 @@ module q_learner
 			end
 			RIGHT:
 			begin
-				if ( col < 3 )
+				if ( col < DIM-1 )
 				begin
 					col_o = col + 1;
 				end
@@ -183,7 +186,7 @@ module q_learner
 			end
 			DOWN:
 			begin
-				if ( row < 3 )
+				if ( row < DIM-1 )
 				begin
 					row_o = row + 1;
 				end
@@ -485,9 +488,16 @@ module q_learner
 			// end of training step
 			S_STEP_TAIL:
 			begin
-				cur_game_state_c = ( term || trunc )
-					? 'h0
-					: next_game_state;
+				if ( term || trunc )
+				begin
+					cur_game_state_c = 'h0;
+					row_c = 'h0;
+					col_c = 'h0;
+				end
+				else
+				begin
+					cur_game_state_c = next_game_state;
+				end
 
 				step_c = step + 1'h1;
 				if ( step_c == MAX_STEPS )
@@ -503,6 +513,8 @@ module q_learner
 				begin
 					// enter initial prediction step
 					cur_game_state_c = 'h0;
+					row_c = 'h0;
+					col_c = 'h0;
 					term_c = 1'b0;
 					trunc_c = 1'b0;
 					state_c = S_EXPLOIT_GET_RAND;
