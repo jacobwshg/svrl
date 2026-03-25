@@ -5,12 +5,12 @@ void
 FrozenLake::step(
 	const int action,
 	int &row, int &col,
-	int &next_state, int &Q_next,
+	int &next_state_idx, int &Q_next_i,
 	bool &term, bool &trunc
 )
 {
-	next_state = 0;
-	Q_next = 0;
+	next_state_idx = 0;
+	Q_next_i = 0;
 	term = false;
 	trunc = false;
 
@@ -20,67 +20,45 @@ FrozenLake::step(
 	}
 	switch ( static_cast<Action>( action ) )
 	{
-	case LEFT:
-		if ( col > 0 )
-		{
-			--col;
-		}
-		break;
+	case Action::LEFT:
+		if ( col > 0 )     { --col; }
+		break
 
-	case RIGHT:
-		if ( col < DIM-1 )
-		{
-			++col;
-		}
-		break;
+	case Action::RIGHT:
+		if ( col < DIM-1 ) { ++col; }
+		break
 
-	case UP:
-		if ( row > 0 )
-		{
-			--row;
-		}
-		break;
+	case Action::UP:
+		if ( row > 0 )     { --row; }
+		break
 
-	case DOWN:
-		if ( row < DIM-1 )
-		{
-			++row;
-		}
-		break;
+	case Action::DOWN:
+		if ( row < DIM-1 ) { ++row; }
+		break
 
 	default:
-		break;
+		break
 	}
 
-	next_state = row * DIM + col;
+	next_state_idx = row * DIM + col;
 
-	switch ( row )
+	switch ( STATES[ next_state_idx ] )
 	{
-	case 1:
-		if ( col==1 || col==3 )
-		{
-			trunc = true;
-		}
-		break;
-	case 2:
-		if ( col==3 )
-		{
-			trunc = true;
-		}
-		break;
-	case 3:
-		if ( col==0 )
-		{
-			trunc = true;
-		}
-		else if ( col==3 )
-		{
-			term = true;
-			Q_next = 1;
-		}
-		break;
-	}
+	case GameState::FROZEN:
+		break
+
+	case GameState::HOLE:
+		trunc = true;
+		break
+
+	case GameState::GOAL:
+		term = true;
+		Q_next_i = 1;
+		break
+
 	default:
-		break;
+		break
+	}
+
 }
 
