@@ -21,14 +21,13 @@ module q_learner
 
 	input  logic rand_in,
 	input  logic rand_empty,
-
-	output logic rand_rd_en,
-
+	input  logic pred_full,
+	
 	output logic train_done,
-
-	output logic [ $clog2( STATE_CNT )-1:0 ]  pd_state,
-	output logic [ $clog2( ACTION_CNT )-1:0 ] pd_action,
-	output logic [ REWARD_WIDTH-1:0 ] pd_reward
+	output logic rand_rd_en,
+	output logic pred_wr_en,
+	output logic [ $clog2( STATE_CNT ) + $clog2( ACTION_CNT ) + REWARD_WIDTH-1:0 ]
+		pred_out;
 );
 
 	import quant_pkg::*;
@@ -43,26 +42,30 @@ module q_learner
 		S_GET_RAND,
 
 		S_EXPLORE_GET_RAND,
-		S_EXPLOIT_GET_RAND,
-
 		S_EXPLORE_CHOICE,
 		S_EXPLORE_ACTION,
 
+		S_EXPLOIT_GET_RAND,
 		S_FIND_QMAX,
 		S_COUNT_QMAX_ACTIONS,
 		S_EXPLOIT_ACTION_SETUP,
 		S_EXPLOIT_ACTION,
 
-		S_STEP,
+		S_TAKE_STEP,
+		S_AFTER_STEP,
 		S_MUL_GAMMA,
 		S_ADD_SUB,
 		S_MUL_ALPHA,
-		S_UPDATE_QCUR
+		S_UPDATE_QCUR,
+		S_STEP_TAIL,
 
+		S_PREDICT_OUT,
+
+		S_DONE
 	} state_t;
 	state_t state, state_c;
 
-	typedef enum logic [ ACTION_WIDTH:0 ]
+	typedef enum logic [ ACTION_WIDTH-1:0 ]
 	{
 		LEFT = 0, RIGHT = 1, UP = 2, DOWN = 3
 	} action_t;
@@ -105,7 +108,7 @@ module q_learner
 		row, row_c,
 		col, col_c;
 
-	logic [ STATE_WIDTH-1:0 ]
+	logic [ STATE_WIDTH:0 ]
 		cur_game_state, cur_game_state_c,
 		next_game_state, next_game_state_c;
 	logic signed [ REWARD_WIDTH-1:0 ]
@@ -118,8 +121,6 @@ module q_learner
 		trunc, trunc_c;
 
 	logic [ STATE_WIDTH-1:0 ]
-		// read addr needs to be clocked because S_FIND_QMAX is agnostic to
-		// whether reading from current or next game state
 		Qtbl_rd_addr, 
 		//Qtbl_rd_addr_c,
 		Qtbl_wr_addr;
@@ -231,16 +232,16 @@ module q_learner
 
 	always_comb
 	begin
-		rand_rd_en = 1'b0;
-		rand_wr_en = 1'b0;
-
 		train_done_c = train_done;
+		rand_rd_en = 1'b0;
+		pred_wr_en = 1'b0;
+		pred_out = 'hX;
 
 		state_c = state;
 		rand_c = rand_reg;
 		state_Qmax_c = state_Qmax;
-		choice_c <= choice;
-		action_c <= action;
+		choice_c = choice;
+		action_c = action;
 
 		Qmax_is_next_c = Qmax_is_next;
 
@@ -262,7 +263,7 @@ module q_learner
 		Qtbl_rd_addr = cur_game_state;
 		Qtbl_wr_addr = 'hX;
 		Qtbl_wr_en = 'b0;
-		Qtbl_din = 'hX;
+		Qtbl_din = 'shX;
 
 		term_c  = term;
 		trunc_c = trunc;
@@ -270,7 +271,18 @@ module q_learner
 		case ( state )
 			S_INIT:
 			begin
-				state_c = S_GET_RAND;
+				// initialize rewards to 0
+				Qtbl_wr_addr = cur_game_state;
+				Qtbl_din = 'sh0;
+				Qtbl_wr_en = 'b1;
+				cur_game_state_c = cur_game_state + 1'h1;
+				if ( cur_game_state_c == STATE_CNT )
+				begin
+					// At next clk edge, all state rows in Q-table will have
+					// been zero-initialized
+					cur_game_state_c = 'h0;
+					state_c = S_GET_RAND;
+				end
 			end
 			S_GET_RAND:
 			begin
@@ -303,7 +315,7 @@ module q_learner
 			S_EXPLORE_ACTION:
 			begin
 				action_c = DEQUANT( choice );
-				state_c = S_STEP;
+				state_c = S_TAKE_STEP;
 			end
 
 			// Exploit
@@ -382,10 +394,10 @@ module q_learner
 			S_EXPLOIT_ACTION:
 			begin
 				action_c = Qmax_action_out;
-				state_c = S_STEP;
+				state_c = S_TAKE_STEP;
 			end
 
-			S_STEP:
+			S_TAKE_STEP:
 			begin
 
 				// Qtbl read addr was set to current game state
@@ -411,16 +423,29 @@ module q_learner
 					term_c,
 					trunc_c
 				);
-				// read from Qtbl at computed next state
-				//Qtbl_rd_addr_c = next_game_state_c;
-				Qtbl_rd_addr = next_game_state_c;
-				Qmax_is_next_c = 1'b1;
 
-				state_Qmax_c = QMIN;
-				action_c = LEFT;
-				state_c = S_FIND_QMAX;
-
+				state_c = S_AFTER_STEP;
 			end
+			S_AFTER_STEP:
+			begin
+				if ( ~train_done )
+				begin
+					// for training; build Q bottom-up
+					// read from Qtbl at computed next state
+					//Qtbl_rd_addr_c = next_game_state_c;
+					Qtbl_rd_addr = next_game_state_c;
+					Qmax_is_next_c = 1'b1;
+					state_Qmax_c = QMIN;
+					action_c = LEFT;
+					state_c = S_FIND_QMAX;
+				end
+				else
+				begin
+					cur_game_state_c = next_game_state;
+					state_c = S_PREDICT_OUT;
+				end
+			end
+
 			S_MUL_GAMMA:
 			begin
 				// Qmax from next state
@@ -445,6 +470,7 @@ module q_learner
 				Qtbl_wr_en[ action ] = 1'b1;
 				state_c = S_STEP_TAIL;
 			end
+			// end of training step
 			S_STEP_TAIL:
 			begin
 				cur_game_state_c = ( term || trunc )
@@ -461,8 +487,39 @@ module q_learner
 				begin
 					state_c = S_GET_RAND;
 				end
+				else
+				begin
+					// enter initial prediction step
+					cur_game_state_c = 'h0;
+					term_c = 1'b0;
+					trunc_c = 1'b0;
+					state_c = S_EXPLOIT_GET_RAND;
+				end
 			end
 
+			S_PREDICT_OUT:
+			begin
+				if ( ~pred_full )
+				begin
+					pred_wr_en = 1'b1;
+					pred_out = { cur_game_state[ STATE_WIDTH-1:0 ], action, Q_cur };
+				end
+				state_c = ( term || trunc )
+					? S_DONE
+					: S_EXPLOIT_GET_RAND;
+			end
+
+			S_DONE:
+			begin
+				if ( rst )
+				begin
+					state_c = S_INIT;
+				end
+			end
+
+			default:
+			begin
+			end
 
 		endcase
 	end
