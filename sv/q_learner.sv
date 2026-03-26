@@ -2,14 +2,25 @@
 /*
  * 4x4 grid
  */
+import frozenlake_pkg::DIM;
+import frozenlake_pkg::WORLD_SIZE;
+import frozenlake_pkg::ACTION_CNT;
+import frozenlake_pkg::action_t;
+import frozenlake_pkg::gamestate_t;
+import frozenlake_pkg::GAME_STATES;
+import quant_pkg::QUANT;
+import quant_pkg::DEQUANT;
 
 module q_learner 
 #(
 	parameter int DWIDTH = 32,
-	parameter int ACTION_CNT = 4,
 
-	parameter int DIM = 4,
-	parameter int STATE_CNT = DIM ** 2,
+	parameter int DIM        = frozenlake_pkg::DIM,
+	parameter int WORLD_SIZE = frozenlake_pkg::WORLD_SIZE,
+	parameter int ACTION_CNT = frozenlake_pkg::ACTION_CNT,
+
+	parameter frozenlake_pkg::gamestate_t GAMESTATES [ 0:WORLD_SIZE-1 ] = 
+		frozenlake_pkg::GAMESTATES;
 
 	parameter int REWARD_WIDTH = DWIDTH,
 	parameter logic signed [ DWIDTH-1:0 ] ALPHA,
@@ -29,13 +40,12 @@ module q_learner
 	output logic train_done,
 	output logic rand_rd_en,
 	output logic pred_wr_en,
-	output logic [ $clog2( STATE_CNT ) + $clog2( ACTION_CNT ) + REWARD_WIDTH-1:0 ]
+	output logic [ $clog2( WORLD_SIZE ) + $clog2( ACTION_CNT ) + REWARD_WIDTH-1:0 ]
 		pred_out;
 );
 
-	import quant_pkg::*;
-
-	localparam int STATE_WIDTH = $clog2( STATE_CNT );
+	localparam int DIM_WIDTH = $clog2( DIM );
+	localparam int GAMESTATE_IDX_WIDTH = $clog2( WORLD_SIZE );
 	localparam int ACTION_WIDTH = $clog2( ACTION_CNT );
 	localparam logic signed [ REWARD_WIDTH-1:0 ] QMIN = 1'h1 <<< ( REWARD_WIDTH-1 );
 
@@ -65,14 +75,10 @@ module q_learner
 		S_PREDICT_OUT,
 
 		S_DONE
-	} state_t;
-	state_t state, state_c;
+	} fsm_state_t;
+	fsm_state_t fsm_state, fsm_state_c;
 
-	typedef enum logic [ ACTION_WIDTH-1:0 ]
-	{
-		LEFT = 0, RIGHT = 1, UP = 2, DOWN = 3
-	} action_t;
-	action_t action, action_c;
+	frozenlake_pkg::action_t action, action_c;
 
 	logic [ ACTION_WIDTH-1:0 ]
 		Qmax_action_rd_addr, Qmax_action_wr_addr,
@@ -80,15 +86,15 @@ module q_learner
 	logic Qmax_action_wr_en;
 
 	bram #(
-		.BRAM_ADDR_WIDTH( ACTION_WIDTH ),
-		.BRAM_DATA_WIDTH( ACTION_WIDTH )
+		.BRAM_ADDR_WIDTH ( ACTION_WIDTH ),
+		.BRAM_DATA_WIDTH ( ACTION_WIDTH )
 	) Qmax_actions_buf (
-		.clock( clk ),
-		.rd_addr( Qmax_action_rd_addr ),
-		.wr_addr( Qmax_action_wr_addr ),
-		.wr_en( Qmax_action_wr_en ),
-		.din( Qmax_action_in ),
-		.dout( Qmax_action_out )
+		.clock   ( clk ),
+		.rd_addr ( Qmax_action_rd_addr ),
+		.wr_addr ( Qmax_action_wr_addr ),
+		.wr_en   ( Qmax_action_wr_en ),
+		.din     ( Qmax_action_in ),
+		.dout    ( Qmax_action_out )
 	);
 
 	logic train_done_c;
@@ -97,7 +103,7 @@ module q_learner
 
 	logic [ DWIDTH-1:0 ] rand_reg, rand_c;
 
-	logic signed [ REWARD_WIDTH-1:0 ] state_Qmax, state_Qmax_c;
+	logic signed [ REWARD_WIDTH-1:0 ] gamestate_Qmax, gamestate_Qmax_c;
 
 	logic Qmax_is_next, Qmax_is_next_c;
 
@@ -105,25 +111,27 @@ module q_learner
 
 	logic [ DWIDTH-1:0 ] step, step_c;
 
-	// technically only need half STATE_WIDTH for each dimension;
-	// keep full width to facilitate arithmetic
-	logic [ STATE_WIDTH-1:0 ]
+	logic [ DIM_WIDTH-1:0 ]
 		row, row_c,
 		col, col_c;
 
-	logic [ STATE_WIDTH:0 ]
-		cur_game_state, cur_game_state_c,
-		next_game_state, next_game_state_c;
+	logic [ GAMESTATE_IDX_WIDTH-1:0 ]
+		cur_gamestate_idx,  cur_gamestate_idx_c,
+		next_gamestate_idx, next_gamestate_idx_c;
 	logic signed [ REWARD_WIDTH-1:0 ]
 		Q_cur, Q_cur_c,
 		Q_next, Q_next_c,
 		Q_tmp, Q_tmp_c;
 
+	// from GAMESTATES ROM
+	logic [ GAMESTATE_IDX_WIDTH-1:0 ] gamestate_rd_addr;
+	frozenlake_pkg::gamestate_t gamestate_out;
+
 	logic
 		term, term_c,
 		trunc, trunc_c;
 
-	logic [ STATE_WIDTH-1:0 ]
+	logic [ GAMESTATE_IDX_WIDTH-1:0 ]
 		Qtbl_rd_addr, 
 		//Qtbl_rd_addr_c,
 		Qtbl_wr_addr;
@@ -132,106 +140,25 @@ module q_learner
 	logic signed [ ACTION_CNT-1:0 ] [ REWARD_WIDTH-1:0 ] Qtbl_dout;
 
 	bram_block #(
-		.BRAM_ADDR_WIDTH( STATE_WIDTH ),
-		.BANK_DATA_WIDTH( REWARD_WIDTH ),
-		.BANK_CNT       ( ACTION_CNT ),
-		.BRAM_DATA_WIDTH( BANK_DATA_WIDTH*BANK_CNT )
+		.BRAM_ADDR_WIDTH ( GAMESTATE_IDX_WIDTH ),
+		.BANK_DATA_WIDTH ( REWARD_WIDTH ),
+		.BANK_CNT        ( ACTION_CNT ),
+		.BRAM_DATA_WIDTH ( BANK_DATA_WIDTH*BANK_CNT )
 	) Qtbl (
 		.clock  ( clk ),
 		//.rd_addr( Qtbl_rd_addr_c ),
-		.rd_addr( Qtbl_rd_addr ),
-		.wr_addr( Qtbl_wr_addr ),
-		.wr_en  ( Qtbl_wr_en ),
-		.din    ( Qtbl_din ),
-		.dout   ( Qtbl_dout )
+		.rd_addr ( Qtbl_rd_addr ),
+		.wr_addr ( Qtbl_wr_addr ),
+		.wr_en   ( Qtbl_wr_en ),
+		.din     ( Qtbl_din ),
+		.dout    ( Qtbl_dout )
 	);
 
-	function automatic void step_frozenlake_4x4(
-		input  action_t action,
-		input  logic [ STATE_WIDTH-1:0 ] row, col,
-		output logic [ STATE_WIDTH-1:0 ] row_o, col_o,
-		output logic [ STATE_WIDTH-1:0 ] obs,
-		output logic signed [ REWARD_WIDTH-1:0 ] rew,
-		output logic term,
-		output logic trunc
-	);
-
-		row_o, col_o = { row, col };
-		obs = 'h0;
-		rew = 'h0;
-		term = 1'b0;
-		trunc = 1'b0;
-
-		case ( action )
-			LEFT:
-			begin
-				if ( col > 0 )
-				begin
-					col_o = col - 1;
-				end
-			end
-			RIGHT:
-			begin
-				if ( col < DIM-1 )
-				begin
-					col_o = col + 1;
-				end
-			end
-			UP:
-			begin
-				if ( row > 0 )
-				begin
-					row_o = row - 1;
-				end
-			end
-			DOWN:
-			begin
-				if ( row < DIM-1 )
-				begin
-					row_o = row + 1;
-				end
-			end
-			default:
-			begin
-			end
-		endcase
-
-		obs = ( row_o <<< 2 ) + col_o;
-
-		case ( row_o )
-			1:
-			begin
-				if ( col_o==1 || col_o==3 )
-				begin
-					trunc = 1'b1;
-				end
-			end
-			2:
-			begin
-				if ( col_o==3 )
-				begin
-					trunc = 1'b1;
-				end
-			end
-			3:
-			begin
-				if ( col_o==0 )
-				begin
-					trunc = 1'b1;
-				end
-				else if ( col_o==3 ):
-				begin
-					term = 1'b1;
-					rew = QUANT( 1'h1 );
-				end
-			end
-			default:
-			begin
-			end
-		endcase
-
-	endfunction
-
+	assign gamestate_rd_addr = next_gamestate_idx_c;
+	always_ff @ ( posedge clk )
+	begin: rd_gamestate
+		gamestate_out <= GAMESTATES[ gamestates_rd_addr ];
+	end: rd_gamestate
 
 	always_comb
 	begin
@@ -240,9 +167,9 @@ module q_learner
 		pred_wr_en = 1'b0;
 		pred_out = 'hX;
 
-		state_c = state;
+		fsm_state_c = fsm_state;
 		rand_c = rand_reg;
-		state_Qmax_c = state_Qmax;
+		gamestate_Qmax_c = gamestate_Qmax;
 		choice_c = choice;
 		action_c = action;
 
@@ -256,8 +183,8 @@ module q_learner
 
 		{ row_c, col_c } = { row, col };
 
-		cur_game_state_c  = cur_game_state;
-		next_game_state_c = next_game_state;
+		cur_gamestate_idx_c  = cur_gamestate_idx;
+		next_gamestate_idx_c = next_gamestate_idx;
 		Q_cur_c  = Q_cur;
 		Q_next_c = Q_next;
 		Q_tmp_c  = Q_tmp;
@@ -266,28 +193,31 @@ module q_learner
 		// unless when updating reward
 		//
 		//Qtbl_rd_addr_c = Qtbl_rd_addr;
-		Qtbl_rd_addr = cur_game_state;
-		Qtbl_wr_addr = 'hX;
+		Qtbl_rd_addr = cur_gamestate_idx;
+		Qtbl_wr_addr = cur_gamestate_idx;
 		Qtbl_wr_en = 'b0;
 		Qtbl_din = 'shX;
 
 		term_c  = term;
 		trunc_c = trunc;
 
-		case ( state )
+		case ( fsm_state )
 			S_INIT:
 			begin
 				// initialize rewards to 0
-				Qtbl_wr_addr = cur_game_state;
+				//Qtbl_wr_addr = cur_gamestate_idx;
 				Qtbl_din = 'sh0;
 				Qtbl_wr_en = 'b1;
-				cur_game_state_c = cur_game_state + 1'h1;
-				if ( cur_game_state_c == STATE_CNT )
+				if ( cur_gamestate_idx == WORLD_SIZE-1 )
 				begin
 					// At next clk edge, all state rows in Q-table will have
 					// been zero-initialized
-					cur_game_state_c = 'h0;
-					state_c = S_GET_RAND;
+					cur_gamestate_idx_c = 'h0;
+					fsm_state_c = S_GET_RAND;
+				end
+				else
+				begin
+					cur_gamestate_idx_c = cur_gamestate_idx + 1'h1;
 				end
 			end
 			S_GET_RAND:
@@ -296,11 +226,11 @@ module q_learner
 				begin
 					rand_rd_en = 1'b1;
 					rand_c = rand_in;
-					state_c = ( rand_in < EPSILON )
+					fsm_state_c = ( rand_in < EPSILON )
 						? S_EXPLORE_GET_RAND
 						: S_EXPLOIT_GET_RAND;
 				end
-				//Qtbl_rd_addr_c = cur_game_state;
+				//Qtbl_rd_addr_c = cur_gamestate_idx;
 			end
 
 			// Explore
@@ -310,18 +240,20 @@ module q_learner
 				begin
 					rand_rd_en = 1'b1;
 					rand_c = rand_in;
-					state_c = S_EXPLORE_CHOICE;
+					fsm_state_c = S_EXPLORE_CHOICE;
 				end
 			end
 			S_EXPLORE_CHOICE:
 			begin
-				choice_c = rand_reg <<< 2; // 4 actions
-				state_c = S_EXPLORE_ACTION;
+				// assume ACTION_CNT is power of 2
+				choice_c = rand_reg << ACTION_WIDTH;
+				fsm_state_c = S_EXPLORE_ACTION;
 			end
 			S_EXPLORE_ACTION:
 			begin
+				// rand is quantized, so dequantize
 				action_c = DEQUANT( choice );
-				state_c = S_TAKE_STEP;
+				fsm_state_c = S_TAKE_STEP;
 			end
 
 			// Exploit
@@ -335,29 +267,33 @@ module q_learner
 					Qmax_is_next_c = 1'b0;
 
 					action_c = LEFT;
-					state_Qmax_c = QMIN;
-					state_c = S_FIND_QMAX;
+					gamestate_Qmax_c = QMIN;
+					fsm_state_c = S_FIND_QMAX;
 				end
 			end
 			S_FIND_QMAX:
 			begin
-				if ( Qtbl_dout[ action ] > state_Qmax )
+				// if prev cycle's state was S_EXPLOIT_GET_RAND,
+				// we are reading from current gamestate's rewards;
+				// if S_AFTER_STEP, we are reading from next gamestate's rewards
+				//
+				if ( Qtbl_dout[ action ] > gamestate_Qmax )
 				begin
-					state_Qmax_c = Qtbl_dout[ action ];
+					gamestate_Qmax_c = Qtbl_dout[ action ];
 				end
 
-				// if finding Q_max within next state (updating reward, not exploiting),
+				// if finding Q_max within next game state (updating reward, not exploiting),
 				// hold read addr at next state
 				if ( Qmax_is_next )
 				begin
-					Qtbl_rd_addr = next_game_state;
+					Qtbl_rd_addr = next_gamestate_idx;
 				end
 
 				if ( action == DOWN )
 				begin
 					Qmax_action_idx_c = 'h0;
 					action_c = LEFT;
-					state_c = Qmax_is_next
+					fsm_state_c = Qmax_is_next
 						? S_MUL_GAMMA
 						: S_COUNT_QMAX_ACTIONS;
 				end
@@ -368,12 +304,14 @@ module q_learner
 			end
 			S_COUNT_QMAX_ACTIONS:
 			begin
-				// iterate over all actions, increment Qmax_action_idx as
+				// iterate over all actions, adding actions sharing Qmax to
+				// buffer and incrementing Qmax_action_idx as
 				// needed (whenever action has shared Qmax).
-				// in a given cycle, Qmax_action_idx <= action (equal if 
+				//
+				// in any cycle, Qmax_action_idx <= action (equal if 
 				// all actions share Qmax)
 				//
-				if ( Qtbl_dout[ action ] == state_Qmax )
+				if ( Qtbl_dout[ action ] == gamestate_Qmax )
 				begin
 					Qmax_action_wr_addr = Qmax_action_idx;
 					Qmax_action_in = action[ ACTION_WIDTH-1:0 ];
@@ -384,7 +322,7 @@ module q_learner
 				if ( action == DOWN )
 				begin
 					action_c = LEFT;
-					state_c = S_EXPLOIT_CHOICE;
+					fsm_state_c = S_EXPLOIT_CHOICE;
 				end
 				else
 				begin
@@ -394,110 +332,124 @@ module q_learner
 			S_EXPLOIT_CHOICE:
 			begin
 				choice_c = ( rand_reg * Qmax_action_idx );
-				state_c = S_EXPLOIT_ACTION_SETUP;
+				fsm_state_c = S_EXPLOIT_ACTION_SETUP;
 			end
-			// set up Qmax_actions_buf bram read
+			// set up Qmax_actions_buf BRAM read
 			S_EXPLOIT_ACTION_SETUP:
 			begin
 				Qmax_action_idx_c = DEQUANT( choice );
 				Qmax_action_rd_addr = Qmax_action_idx_c[ ACTION_WIDTH-1:0 ];
-				state_c = S_EXPLOIT_ACTION;
+				fsm_state_c = S_EXPLOIT_ACTION;
 			end
 			S_EXPLOIT_ACTION:
 			begin
 				action_c = Qmax_action_out;
-				state_c = S_TAKE_STEP;
+				fsm_state_c = S_TAKE_STEP;
 			end
 
 			S_TAKE_STEP:
 			begin
-
+				// cache current reward in this state, despite doing it in
+				// S_MUL_GAMMA ( initial state in update computation ) has
+				// better locality; 
+				// this is because when going from S_FIND_QMAX to S_MUL_GAMMA,
+				// Qtbl rd addr is stil the next gamestate, and we would be 
+				// reading an invalid reward in S_MUL_GAMMA
+				//
 				Q_cur_c = Qtbl_dout[ action ];
 
-				// hardcode FrozenLake
-				/*
-					input  action_t action,
-					input  logic [ STATE_WIDTH-1:0 ] row, col,
-					output logic [ STATE_WIDTH-1:0 ] row_o, col_o,
-					output logic [ STATE_WIDTH-1:0 ] obs,
-					output logic signed [ REWARD_WIDTH-1:0 ] rew,
-					output logic term,
-					output logic trunc
-				*/
-				step_frozenlake_4x4(
+				// take step to obtain updated row, col and game state idx;
+				// reward and flags are not updated yet
+				frozenlake_pkg::step(
 					action,
 					row, col,
 					row_c, col_c,
-					next_game_state_c[ STATE_WIDTH-1:0 ],
-					Q_next_c,
-					term_c,
-					trunc_c
+					next_gamestate_idx_c
 				);
 
-				state_c = S_AFTER_STEP;
+				fsm_state_c = S_AFTER_STEP;
 			end
+			// between these states, GAMESTATES is addressed by
+			// updated next_gamestate_idx_c
 			S_AFTER_STEP:
 			begin
-				if ( ~train_done )
+
+				frozenlake_pkg::eval_gamestate(
+					gamestate_out,
+					term_c, trunc_c, Q_next_c;
+				)
+
+				if ( train_done )
 				begin
-					// for training; build Q bottom-up
-					// read from Qtbl at computed next state
-					//Qtbl_rd_addr_c = next_game_state_c;
-					Qtbl_rd_addr = next_game_state_c;
-
-					Qmax_is_next_c = 1'b1;
-
-					state_Qmax_c = QMIN;
-					action_c = LEFT;
-					// to obtain Qmax in next state when updating reward,
-					// reuse S_FIND_QMAX from exploit datapath, but since
-					// we assert Qmax_is_next, it will return to S_MUL_GAMMA
-					state_c = S_FIND_QMAX;
+					// for prediction: no current reward update needed
+					fsm_state_c = S_PREDICT_OUT;
 				end
 				else
 				begin
-					cur_game_state_c = next_game_state;
-					state_c = S_PREDICT_OUT;
+					// for training; build new Q_cur bottom-up
+					// start by reading from Qtbl at computed next gamestate
+
+					//Qtbl_rd_addr_c = next_gamestate_idx;
+					Qtbl_rd_addr = next_gamestate_idx;
+					Qmax_is_next_c = 1'b1;
+
+					gamestate_Qmax_c = QMIN;
+					action_c = LEFT;
+					// to obtain Qmax in next state when updating Q_cur,
+					// reuse S_FIND_QMAX from exploit datapath, but since
+					// we assert Qmax_is_next, it will return to S_MUL_GAMMA
+					//
+					fsm_state_c = S_FIND_QMAX;
 				end
 			end
 
 			S_MUL_GAMMA:
 			begin
-				// Qmax from next state
-				Q_tmp_c = GAMMA * state_Qmax;
-				state_c = S_ADD_SUB;
+				// next reward needs to be quantized only on the training
+				// datapath, not the prediction datapath
+				Q_next_c = QUANT( Q_next );
+
+				// Qmax is from *next* game state ( S_AFTER_STEP (~train_done) 
+				// -> S_FIND_QMAX -> S_MUL_GAMMA )
+				Q_tmp_c = GAMMA * gamestate_Qmax;
+				fsm_state_c = S_ADD_SUB;
 			end
 			S_ADD_SUB:
 			begin
 				Q_tmp_c = Q_next - Q_cur;
 				Q_tmp_c = Q_tmp_c + DEQUANT( Q_tmp ); 
-				state_c = S_MUL_ALPHA;
+				fsm_state_c = S_MUL_ALPHA;
 			end
 			S_MUL_ALPHA:
 			begin
 				Q_tmp_c = ALPHA * Q_tmp;
-				state_c = S_UPDATE_QCUR;
+				fsm_state_c = S_UPDATE_QCUR;
 			end
 			S_UPDATE_QCUR:
 			begin
+				// both alpha and previous Q_tmp are quantized;
+				// dequantize to get once-quantized product
 				Q_cur_c = Q_cur + DEQUANT( Q_tmp );
 				Qtbl_din = Q_cur_c;
-				Qtbl_wr_addr = cur_game_state;
+				//Qtbl_wr_addr = cur_gamestate_idx;
 				Qtbl_wr_en[ action ] = 1'b1;
-				state_c = S_STEP_TAIL;
+				fsm_state_c = S_STEP_TAIL;
 			end
 			// end of training step
 			S_STEP_TAIL:
 			begin
+				// flags set in S_AFTER_STEP
 				if ( term || trunc )
 				begin
-					cur_game_state_c = 'h0;
+					cur_gamestate_idx_c = 'h0;
 					row_c = 'h0;
 					col_c = 'h0;
 				end
 				else
 				begin
-					cur_game_state_c = next_game_state;
+					// updated row and col had been registered at the end of
+					// the prev S_TAKE_STEP cycle
+					cur_gamestate_idx_c = next_gamestate_idx;
 				end
 
 				step_c = step + 1'h1;
@@ -508,17 +460,17 @@ module q_learner
 
 				if ( ~train_done_c )
 				begin
-					state_c = S_GET_RAND;
+					fsm_state_c = S_GET_RAND;
 				end
 				else
 				begin
 					// enter initial prediction step
-					cur_game_state_c = 'h0;
+					cur_gamestate_idx_c = 'h0;
 					row_c = 'h0;
 					col_c = 'h0;
-					term_c = 1'b0;
+					term_c  = 1'b0;
 					trunc_c = 1'b0;
-					state_c = S_EXPLOIT_GET_RAND;
+					fsm_state_c = S_EXPLOIT_GET_RAND;
 				end
 			end
 
@@ -526,9 +478,13 @@ module q_learner
 			begin
 				if ( ~pred_full )
 				begin
+					// next_gamestate_idx and Q_next were respectively updated 
+					// on the clk edge out of S_TAKE_STEP and S_AFTER_STEP
 					pred_wr_en = 1'b1;
-					pred_out = { cur_game_state[ STATE_WIDTH-1:0 ], action, Q_cur };
-					state_c = ( term || trunc )
+					pred_out = { next_gamestate_idx, action, Q_next };
+					cur_gamestate_idx_c = next_gamestate_idx;
+
+					fsm_state_c = ( term || trunc )
 						? S_DONE
 						: S_EXPLOIT_GET_RAND;
 				end
@@ -539,7 +495,7 @@ module q_learner
 				/*
 				if ( rst )
 				begin
-					state_c = S_INIT;
+					fsm_state_c = S_INIT;
 				end
 				*/
 			end
@@ -555,17 +511,17 @@ module q_learner
 	begin
 		if ( rst )
 		begin
-			state <= S_INIT;
+			fsm_state <= S_INIT;
 			rand_reg <= 'h0;
-			state_Qmax <= QMIN;
+			gamestate_Qmax <= QMIN;
 			choice <= 'h0;
 			action <= LEFT;
 			Qmax_action_idx <= 'h0;
 			Qmax_is_next <= 1'b0;
 			row <= 'h0;
 			col <= 'h0;
-			cur_game_state  <= 'h0;
-			next_game_state <= 'h0;
+			cur_gamestate_idx  <= 'h0;
+			next_gamestate_idx <= 'h0;
 			Q_cur  <= 'sh0;
 			Q_next <= 'sh0;
 			Q_tmp  <= 'sh0;
@@ -577,17 +533,17 @@ module q_learner
 		end
 		else
 		begin
-			state <= state_c;
+			fsm_state <= fsm_state_c;
 			rand_reg <= rand_c;
-			state_Qmax <= state_Qmax_c;
+			gamestate_Qmax <= gamestate_Qmax_c;
 			choice <= choice_c;
 			action <= action_c;
 			Qmax_action_idx <= Qmax_action_idx_c;
 			Qmax_is_next <= Qmax_is_next_c;
 			row <= row_c;
 			col <= col_c;
-			cur_game_state  <= cur_game_state_c;
-			next_game_state <= next_game_state_c;
+			cur_gamestate_idx  <= cur_gamestate_idx_c;
+			next_gamestate_idx <= next_gamestate_idx_c;
 			Q_cur  <= Q_cur_c;
 			Q_next <= Q_next_c;
 			Q_tmp  <= Q_tmp_c;

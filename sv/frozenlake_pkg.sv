@@ -5,9 +5,9 @@ package frozenlake_pkg
 	localparam int WORLD_SIZE = DIM ** 2;
 	localparam int ACTION_CNT = 4;
 
-	localparam int DIM_WIDTH        = $clog2( DIM );
-	localparam int STATE_IDX_WIDTH  = $clog2( WORLD_SIZE );
-	localparam int ACTION_WIDTH     = $clog2( ACTION_CNT );
+	localparam int DIM_WIDTH = $clog2( DIM );
+	localparam int GAMESTATE_IDX_WIDTH  = $clog2( WORLD_SIZE );
+	localparam int ACTION_WIDTH = $clog2( ACTION_CNT );
 
 	typedef enum logic [ ACTION_WIDTH-1:0 ]
 	{
@@ -20,10 +20,10 @@ package frozenlake_pkg
 		FROZEN = 2'b00,
 		HOLE   = 2'b01,
 		GOAL   = 2'b10
-	} game_state_t;
+	} gamestate_t;
 
 	/*
-	localparam game_state_t STATES [ 0:15 ] = 
+	localparam gamestate_t GAMESTATES [ 0:15 ] = 
 	{
 		2'b00, 2'b00, 2'b00, 2'b00,
 		2'b00, 2'b01, 2'b00, 2'b01,
@@ -32,7 +32,7 @@ package frozenlake_pkg
 	}
 	*/
 
-	localparam game_state_t STATES [ 0:WORLD_SIZE-1 ] = 
+	localparam gamestate_t GAMESTATES [ 0:WORLD_SIZE-1 ] = 
 	{
 		FROZEN, FROZEN, FROZEN, FROZEN,
 		FROZEN, HOLE,   FROZEN, HOLE,
@@ -44,10 +44,10 @@ package frozenlake_pkg
 		input  action_t action,
 		input  logic [ DIM_WIDTH-1:0 ] row, col,
 		output logic [ DIM_WIDTH-1:0 ] next_row, next_col
-		output logic [ STATE_IDX_WIDTH-1:0 ] next_state_idx
+		output logic [ GAMESTATE_IDX_WIDTH-1:0 ] next_gamestate_idx
 	);
 		next_row, next_col = { row, col };
-		next_state_idx = 'h0;
+		next_gamestate_idx = 'h0;
 
 		case ( action )
 			LEFT:
@@ -64,17 +64,22 @@ package frozenlake_pkg
 					next_row = row + 1;
 		endcase
 
-		next_state_idx = { next_row, next_col };
+		// assume DIM is power of 2, so row and col always occupy distinct
+		// bits
+		next_gamestate_idx = { next_row, next_col };
 
 	endfunction
 
-	function automatic void set_flags(
-		input  game_state_t game_state,
+	function automatic void eval_gamestate(
+		input  gamestate_t gamestate,
 		output logic term,
-		output logic trunc
+		output logic trunc,
+		output logic [ 31:0 ] reward
 	);
-		term  = 1'( game_state == GOAL );
-		trunc = 1'( game_state == HOLE );
+		term  = 1'( gamestate == GOAL );
+		trunc = 1'( gamestate == HOLE );
+		// generate logical reward ( no quantization )
+		reward = ( gamestate == GOAL ) ? 1'h1; 1'h0;
 	endfunction
 
 endpackage: frozenlake_pkg
