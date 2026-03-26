@@ -70,7 +70,7 @@ QLearner::train( void )
 		float rand_f {};
 		int   rand_q {};
 		this->get_rand( rand_f, rand_q );
-		std::printf( "\n\nStep %d got rand %f ( %08x )\n", step, rand_f, rand_q );
+//		std::printf( "\n\nStep %d got rand %f ( %08x )\n", step, rand_f, rand_q );
 
 		// rewards for actions in current state
 		const std::vector<int> &Q_state { Qtbl[ current_state_idx ] };
@@ -80,23 +80,23 @@ QLearner::train( void )
 		{
 			// explore
 			this->get_rand( rand_f, rand_q );
-			std::printf( "\tExplore: got new rand %f ( %08x ) \n", rand_f, rand_q );
+//			std::printf( "\tExplore: got new rand %f ( %08x ) \n", rand_f, rand_q );
 
 			const int choice_q { rand_q * this->action_cnt };
 			const int choice { Quant::DEQUANTIZE_I( choice_q ) };
-			std::printf(
-				"\tExplore: quant choice %08x, choice %d, reference choice (no quant): %d \n",
-				choice_q, choice, static_cast<int>( rand_f * this->action_cnt )
-			);
+//			std::printf(
+//				"\tExplore: quant choice %08x, choice %d, reference choice (no quant): %d \n",
+//				choice_q, choice, static_cast<int>( rand_f * this->action_cnt )
+//			);
 
 			action = choice;
-			std::printf( "\tExplore: action %d \n", action );
+//			std::printf( "\tExplore: action %d \n", action );
 		}
 		else
 		{
 			// exploit
 			this->get_rand( rand_f, rand_q );
-			std::printf( "\tExploit: got new rand %f ( %08x ) \n", rand_f, rand_q );
+//			std::printf( "\tExploit: got new rand %f ( %08x ) \n", rand_f, rand_q );
 
 			//////////
 			int state_Qmax { -( 1<<30 ) };
@@ -107,7 +107,7 @@ QLearner::train( void )
 					state_Qmax = Q;
 				}
 			}
-			std::printf( "\tExploit: current state idx %d, Qmax %08x \n", current_state_idx, state_Qmax );
+//			std::printf( "\tExploit: current state idx %d, Qmax %08x \n", current_state_idx, state_Qmax );
 
 			int Qmax_action_idx { 0 };
 			action = 0;
@@ -115,24 +115,26 @@ QLearner::train( void )
 			{
 				if ( Q == state_Qmax )
 				{
-					std::printf( "\tExploit: action %d sharing Qmax \n", action );
+//					std::printf( "\tExploit: action %d sharing Qmax \n", action );
 					Qmax_actions_buf[ Qmax_action_idx ] = action;
 					++Qmax_action_idx;
 				}
 				++action;
 			}
-			std::printf( "\tExploit: %d actions sharing Qmax \n", Qmax_action_idx );
+//			std::printf( "\tExploit: %d actions sharing Qmax \n", Qmax_action_idx );
 
 			const int choice_q { rand_q * Qmax_action_idx };
 			const int choice { Quant::DEQUANTIZE_I( choice_q )  };
+/*
 			std::printf(
 				"\tExploit: quant choice %08x, choice %d, reference choice (no quant)%d \n",
 				choice_q, choice, static_cast<int>( rand_f * Qmax_action_idx )
 			);
+*/
 			///////
 
 			action = Qmax_actions_buf[ choice ];
-			std::printf( "\tExploit: action %d \n", action );
+//			std::printf( "\tExploit: action %d \n", action );
 
 		}
 
@@ -148,10 +150,12 @@ QLearner::train( void )
 			term, trunc
 		);
 		const int Q_next_q { Quant::QUANTIZE_I( Q_next_i ) };
+/*
 		std::printf(
 			"\tAfter step: row %d, col %d, next state idx %d, next reward %d ( quantized %08x ), term %d, trunc %d \n",
 			row, col, next_state_idx, Q_next_i, Q_next_q, term, trunc
 		);
+*/
 		
 		const std::vector<int> &Q_next_state { Qtbl[ next_state_idx ] };
 		int next_state_Qmax { -( 1<<30 ) };
@@ -159,22 +163,22 @@ QLearner::train( void )
 		{
 			if ( Q > next_state_Qmax ) { next_state_Qmax = Q; }
 		}
-		std::printf( "\tNext state max reward: %08x \n", next_state_Qmax );
+//		std::printf( "\tNext state max reward: %08x \n", next_state_Qmax );
 
 		int Q_cur { Q_state[ action ] };
-		std::printf( "\tCurrent reward: %08x \n", Q_cur );
+//		std::printf( "\tCurrent reward: %08x \n", Q_cur );
 
 		int Q_tmp { this->gamma_q * next_state_Qmax };
-		std::printf( "\tQ_tmp = gamma_q * next_state_Qmax = %08x \n", Q_tmp );
+//		std::printf( "\tQ_tmp = gamma_q * next_state_Qmax = %08x \n", Q_tmp );
 
 		Q_tmp = Q_next_q + Quant::DEQUANTIZE_I( Q_tmp ) - Q_cur;
-		std::printf( "\tQ_tmp = Q_next + DQ( Q_tmp ) - Q_cur = %08x \n", Q_tmp );
+//		std::printf( "\tQ_tmp = Q_next + DQ( Q_tmp ) - Q_cur = %08x \n", Q_tmp );
 
 		Q_tmp *= this->alpha_q;
-		std::printf( "\tQ_tmp *= alpha_q = %08x \n", Q_tmp );
+//		std::printf( "\tQ_tmp *= alpha_q = %08x \n", Q_tmp );
 
 		Q_cur += Quant::DEQUANTIZE_I( Q_tmp );
-		std::printf( "\tQ_cur += DQ( Q_tmp ) = %08x \n", Q_cur );
+//		std::printf( "\tQ_cur += DQ( Q_tmp ) = %08x \n", Q_cur );
 
 		// write back current reward
 		Qtbl[ current_state_idx ][ action ] = Q_cur;
@@ -269,5 +273,19 @@ QLearner::predict( void )
 			.emplace_back( Q_next_i );
 	}
 
+}
+
+void
+QLearner::print_Qtbl( void ) const
+{
+	for ( const std::vector<int> &Q_state : this->Qtbl )
+	{
+		for ( const int Q: Q_state )
+		{
+			std::printf( "%08x\t", Q );
+		}
+		std::printf( "\n" );
+	}
+	std::printf( "\n" );
 }
 

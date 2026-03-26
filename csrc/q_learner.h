@@ -52,6 +52,8 @@ public:
 
 	void predict( void );
 
+	void print_Qtbl( void ) const;
+
 };
 
 #endif

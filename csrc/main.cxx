@@ -9,9 +9,9 @@ main()
 {
 	const float
 		alpha_f { 0.5f },
-		gamma_f { 0.5f },
-		epsilon_f { 0.2f };
-	const int max_steps { 100 };
+		gamma_f { 0.7f },
+		epsilon_f { 0.4f };
+	const int max_steps { 3000 };
 
 	QLearner ql(
 		alpha_f, gamma_f, epsilon_f,
@@ -21,9 +21,13 @@ main()
 	);
 
 	ql.train();
-	ql.predict();
+	std::printf( "\n" );
 
-	std::printf( "\n\n" );
+	ql.print_Qtbl();
+	std::printf( "\n" );
+
+	ql.predict();
+	std::printf( "\n" );
 
 	int ipred { -1 };
 	for ( const int action: ql.pred_actions )
@@ -36,6 +40,8 @@ main()
 			action, state_idx, Q_i
 		);
 	}
+
+	std::printf( "\n" );
 
 }
 
