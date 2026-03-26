@@ -1,5 +1,5 @@
 
-package frozenlake_pkg
+package frozenlake_pkg;
 
 	localparam int DIM = 4;
 	localparam int WORLD_SIZE = DIM ** 2;
@@ -43,10 +43,10 @@ package frozenlake_pkg
 	function automatic void step(
 		input  action_t action,
 		input  logic [ DIM_WIDTH-1:0 ] row, col,
-		output logic [ DIM_WIDTH-1:0 ] next_row, next_col
+		output logic [ DIM_WIDTH-1:0 ] next_row, next_col,
 		output logic [ GAMESTATE_IDX_WIDTH-1:0 ] next_gamestate_idx
 	);
-		next_row, next_col = { row, col };
+		{ next_row, next_col } = { row, col };
 		next_gamestate_idx = 'h0;
 
 		case ( action )
@@ -79,7 +79,7 @@ package frozenlake_pkg
 		term  = 1'( gamestate == GOAL );
 		trunc = 1'( gamestate == HOLE );
 		// generate logical reward ( no quantization )
-		reward = ( gamestate == GOAL ) ? 1'h1; 1'h0;
+		reward = ( gamestate == GOAL ) ? 1'h1: 1'h0;
 	endfunction
 
 endpackage: frozenlake_pkg

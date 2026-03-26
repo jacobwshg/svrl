@@ -7,7 +7,7 @@ import frozenlake_pkg::WORLD_SIZE;
 import frozenlake_pkg::ACTION_CNT;
 import frozenlake_pkg::action_t;
 import frozenlake_pkg::gamestate_t;
-import frozenlake_pkg::GAME_STATES;
+import frozenlake_pkg::GAMESTATES;
 import quant_pkg::QUANT;
 import quant_pkg::DEQUANT;
 
@@ -20,7 +20,7 @@ module q_learner
 	parameter int ACTION_CNT = frozenlake_pkg::ACTION_CNT,
 
 	parameter frozenlake_pkg::gamestate_t GAMESTATES [ 0:WORLD_SIZE-1 ] = 
-		frozenlake_pkg::GAMESTATES;
+		frozenlake_pkg::GAMESTATES,
 
 	parameter int REWARD_WIDTH = DWIDTH,
 	parameter logic signed [ DWIDTH-1:0 ] ALPHA,
@@ -41,7 +41,7 @@ module q_learner
 	output logic rand_rd_en,
 	output logic pred_wr_en,
 	output logic [ $clog2( WORLD_SIZE ) + $clog2( ACTION_CNT ) + REWARD_WIDTH-1:0 ]
-		pred_out;
+		pred_out
 );
 
 	localparam int DIM_WIDTH = $clog2( DIM );
@@ -61,6 +61,7 @@ module q_learner
 		S_EXPLOIT_GET_RAND,
 		S_FIND_QMAX,
 		S_COUNT_QMAX_ACTIONS,
+		S_EXPLOIT_CHOICE,
 		S_EXPLOIT_ACTION_SETUP,
 		S_EXPLOIT_ACTION,
 
@@ -143,7 +144,7 @@ module q_learner
 		.BRAM_ADDR_WIDTH ( GAMESTATE_IDX_WIDTH ),
 		.BANK_DATA_WIDTH ( REWARD_WIDTH ),
 		.BANK_CNT        ( ACTION_CNT ),
-		.BRAM_DATA_WIDTH ( BANK_DATA_WIDTH*BANK_CNT )
+		.BRAM_DATA_WIDTH ( REWARD_WIDTH * ACTION_CNT )
 	) Qtbl (
 		.clock  ( clk ),
 		//.rd_addr( Qtbl_rd_addr_c ),
@@ -157,7 +158,7 @@ module q_learner
 	assign gamestate_rd_addr = next_gamestate_idx_c;
 	always_ff @ ( posedge clk )
 	begin: rd_gamestate
-		gamestate_out <= GAMESTATES[ gamestates_rd_addr ];
+		gamestate_out <= GAMESTATES[ gamestate_rd_addr ];
 	end: rd_gamestate
 
 	always_comb
@@ -266,7 +267,7 @@ module q_learner
 
 					Qmax_is_next_c = 1'b0;
 
-					action_c = LEFT;
+					action_c = 'h0; //LEFT;
 					gamestate_Qmax_c = QMIN;
 					fsm_state_c = S_FIND_QMAX;
 				end
@@ -289,10 +290,10 @@ module q_learner
 					Qtbl_rd_addr = next_gamestate_idx;
 				end
 
-				if ( action == DOWN )
+				if ( action == ACTION_CNT-1 ) //DOWN
 				begin
 					Qmax_action_idx_c = 'h0;
-					action_c = LEFT;
+					action_c = 'h0; //LEFT;
 					fsm_state_c = Qmax_is_next
 						? S_MUL_GAMMA
 						: S_COUNT_QMAX_ACTIONS;
@@ -319,9 +320,9 @@ module q_learner
 					Qmax_action_idx_c = Qmax_action_idx + 1'h1;
 				end
 
-				if ( action == DOWN )
+				if ( action == ACTION_CNT-1 ) //DOWN
 				begin
-					action_c = LEFT;
+					action_c = 'h0; //LEFT;
 					fsm_state_c = S_EXPLOIT_CHOICE;
 				end
 				else
@@ -376,8 +377,8 @@ module q_learner
 
 				frozenlake_pkg::eval_gamestate(
 					gamestate_out,
-					term_c, trunc_c, Q_next_c;
-				)
+					term_c, trunc_c, Q_next_c
+				);
 
 				if ( train_done )
 				begin
@@ -394,7 +395,7 @@ module q_learner
 					Qmax_is_next_c = 1'b1;
 
 					gamestate_Qmax_c = QMIN;
-					action_c = LEFT;
+					action_c = 'h0; //LEFT;
 					// to obtain Qmax in next state when updating Q_cur,
 					// reuse S_FIND_QMAX from exploit datapath, but since
 					// we assert Qmax_is_next, it will return to S_MUL_GAMMA
@@ -515,7 +516,7 @@ module q_learner
 			rand_reg <= 'h0;
 			gamestate_Qmax <= QMIN;
 			choice <= 'h0;
-			action <= LEFT;
+			action <= 'h0; //LEFT;
 			Qmax_action_idx <= 'h0;
 			Qmax_is_next <= 1'b0;
 			row <= 'h0;

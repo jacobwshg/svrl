@@ -3,6 +3,9 @@ package quant_pkg;
 
 	import globals_pkg::*;
 
+	localparam int FRAC_WIDTH = 10;
+	localparam int Q_STEP = 1<<FRAC_WIDTH;
+
 	function automatic logic signed [ DWIDTH-1:0 ]
 	QUANT( input logic signed [ DWIDTH-1:0 ] x );
 
