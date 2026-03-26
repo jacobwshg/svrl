@@ -3,6 +3,8 @@
 #define Q_LEARNER_H
 
 #include "frozenlake.h"
+#include <string>
+#include <vector>
 
 class QLearner
 {

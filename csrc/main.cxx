@@ -1,6 +1,8 @@
 
-#include <q_learner.h>
-#include <frozenlake.h>
+#include "q_learner.h"
+#include "frozenlake.h"
+#include <vector>
+#include <cstdio>
 
 int
 main()

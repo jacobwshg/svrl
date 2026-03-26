@@ -22,22 +22,22 @@ FrozenLake::step(
 	{
 	case Action::LEFT:
 		if ( col > 0 )     { --col; }
-		break
+		break;
 
 	case Action::RIGHT:
 		if ( col < DIM-1 ) { ++col; }
-		break
+		break;
 
 	case Action::UP:
 		if ( row > 0 )     { --row; }
-		break
+		break;
 
 	case Action::DOWN:
 		if ( row < DIM-1 ) { ++row; }
-		break
+		break;
 
 	default:
-		break
+		break;
 	}
 
 	next_state_idx = row * DIM + col;
@@ -45,19 +45,19 @@ FrozenLake::step(
 	switch ( STATES[ next_state_idx ] )
 	{
 	case GameState::FROZEN:
-		break
+		break;
 
 	case GameState::HOLE:
 		trunc = true;
-		break
+		break;
 
 	case GameState::GOAL:
 		term = true;
 		Q_next_i = 1;
-		break
+		break;
 
 	default:
-		break
+		break;
 	}
 
 }

@@ -3,6 +3,7 @@
 #include "quant.h"
 #include "frozenlake.h"
 #include <cstdio>
+#include <fstream>
 
 QLearner::QLearner(
 	float alpha_f,
@@ -39,7 +40,7 @@ QLearner::QLearner(
 		this->rand_q_mem.emplace_back( Quant::QUANTIZE_F( rand_f ) );
 	}
 
-	this->rand_cnt = static_cast<int>( rand_mem.size() );
+	this->rand_cnt = static_cast<int>( rand_f_mem.size() );
 }
 
 void
@@ -61,7 +62,8 @@ QLearner::train( void )
 	std::vector<int> Qmax_actions_buf( this->action_cnt );
 
 	int current_state_idx { 0 };
-	int row { 0 }, int col { 0 };
+	int row { 0 };
+	int col { 0 };
 
 	for ( int step = 0; step < this->max_steps; ++step )
 	{
@@ -155,7 +157,7 @@ QLearner::train( void )
 		int next_state_Qmax { -( 1<<30 ) };
 		for ( const int Q: Q_next_state )
 		{
-			if ( Q > next_state_Qmax ) { next_state_Qmax = Q };
+			if ( Q > next_state_Qmax ) { next_state_Qmax = Q; }
 		}
 		std::printf( "\tNext state max reward: %08x \n", next_state_Qmax );
 
@@ -243,7 +245,7 @@ QLearner::predict( void )
 		this->get_rand( rand_f, rand_q );
 		const int choice_q { rand_q * Qmax_action_idx };
 		const int choice { Quant::DEQUANTIZE_I( choice_q ) };
-		action = Qmax_action_buf[ choice ];
+		action = Qmax_actions_buf[ choice ];
 
 		std::printf(
 			"\tquant choice %08x, choice %d, reference choice (no quant)%d, action %d \n",
