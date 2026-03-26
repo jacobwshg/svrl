@@ -1,0 +1,39 @@
+
+#include <q_learner.h>
+#include <frozenlake.h>
+
+int
+main()
+{
+	const float
+		alpha_f { 0.5f },
+		gamma_f { 0.5f },
+		epsilon_f { 0.2f };
+	const int max_steps { 100 };
+
+	QLearner ql(
+		alpha_f, gamma_f, epsilon_f,
+		max_steps,
+		FrozenLake::WORLD_SIZE,
+		FrozenLake::ACTION_CNT
+	);
+
+	ql.train();
+	ql.predict();
+
+	std::printf( "\n\n" );
+
+	int ipred { -1 };
+	for ( const int action: ql.pred_actions )
+	{
+		++ipred;
+		const int state_idx { ql.pred_state_idxs[ ipred ] };
+		const int Q_i       { ql.pred_rewards_i[ ipred ] };
+		std::printf(
+			"Predicted action %d, state idx %d, reward (no quant) %d \n",
+			action, state_idx, Q_i
+		);
+	}
+
+}
+

@@ -13,8 +13,8 @@ namespace FrozenLake
 	enum class GameState: int
 	{
 		FROZEN = 0x0,
-		HOLE = 0x1,
-		GOAL = 0x2,
+		HOLE   = 0x1,
+		GOAL   = 0x2,
 	};
 
 	static constexpr std::array< GameState, WORLD_SIZE > STATES

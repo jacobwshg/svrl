@@ -469,7 +469,8 @@ module q_learner
 			end
 			S_ADD_SUB:
 			begin
-				Q_tmp_c = Q_next + DEQUANT( Q_tmp ) - Q_cur;
+				Q_tmp_c = Q_next - Q_cur;
+				Q_tmp_c = Q_tmp_c + DEQUANT( Q_tmp ); 
 				state_c = S_MUL_ALPHA;
 			end
 			S_MUL_ALPHA:

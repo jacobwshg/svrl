@@ -1,6 +1,7 @@
 
-#include "quant.h"
 #include "q_learner.h"
+#include "quant.h"
+#include "frozenlake.h"
 #include <cstdio>
 
 QLearner::QLearner(
@@ -8,19 +9,23 @@ QLearner::QLearner(
 	float gamma_f,
 	float epsilon_f,
 	int max_steps,
-	int state_cnt,
+	int world_size,
 	int action_cnt
 ):
-	alpha_f   { alpha_f }, gamma_f { gamma_f }, epsilon_f { epsilon_f },
+	alpha_f   { alpha_f },
+	gamma_f   { gamma_f },
+	epsilon_f { epsilon_f },
 
 	alpha_q   { Quant::QUANTIZE_F( alpha_f ) },
 	gamma_q   { Quant::QUANTIZE_F( gamma_f ) },
 	epsilon_q { Quant::QUANTIZE_F( epsilon_f ) },
 
-	max_steps { max_steps }, state_cnt { state_cnt }, action_cnt { action_cnt }
+	max_steps  { max_steps },
+	world_size { world_size },
+	action_cnt { action_cnt }
 {
 	// initialize Q-table
-	this->Qtbl.resize( this->state_cnt, std::vector<int>( this->action_cnt, 0 ) );
+	this->Qtbl.resize( this->world_size, std::vector<int>( this->action_cnt, 0 ) );
 
 	// load randoms
 	this->rand_f_mem.reserve( QLearner::RAND_CNT );
@@ -72,13 +77,14 @@ QLearner::train( void )
 		if ( rand_q < this->epsilon_q )
 		{
 			// explore
-			rand_q = this->get_rand( rand_f, rand_q );
+			this->get_rand( rand_f, rand_q );
 			std::printf( "\tExplore: got new rand %f ( %08x ) \n", rand_f, rand_q );
 
-			const int choice { Quant::DEQUANTIZE_I( rand_q * this->action_cnt ) };
+			const int choice_q { rand_q * this->action_cnt };
+			const int choice { Quant::DEQUANTIZE_I( choice_q ) };
 			std::printf(
-				"\tExplore: choice %d, reference choice (no quant): %d \n",
-				choice, static_cast<int>( rand_f * this->action_cnt )
+				"\tExplore: quant choice %08x, choice %d, reference choice (no quant): %d \n",
+				choice_q, choice, static_cast<int>( rand_f * this->action_cnt )
 			);
 
 			action = choice;
@@ -87,7 +93,7 @@ QLearner::train( void )
 		else
 		{
 			// exploit
-			rand_q = this->get_rand( rand_f, rand_q );
+			this->get_rand( rand_f, rand_q );
 			std::printf( "\tExploit: got new rand %f ( %08x ) \n", rand_f, rand_q );
 
 			//////////
@@ -99,7 +105,7 @@ QLearner::train( void )
 					state_Qmax = Q;
 				}
 			}
-			std::printf( "\tExploit: current state %d, Qmax %08x \n", current_state_idx, state_Qmax );
+			std::printf( "\tExploit: current state idx %d, Qmax %08x \n", current_state_idx, state_Qmax );
 
 			int Qmax_action_idx { 0 };
 			action = 0;
@@ -107,9 +113,7 @@ QLearner::train( void )
 			{
 				if ( Q == state_Qmax )
 				{
-					std::printf(
-						"\tExploit: action %d sharing Qmax \n", action
-					);
+					std::printf( "\tExploit: action %d sharing Qmax \n", action );
 					Qmax_actions_buf[ Qmax_action_idx ] = action;
 					++Qmax_action_idx;
 				}
@@ -117,10 +121,11 @@ QLearner::train( void )
 			}
 			std::printf( "\tExploit: %d actions sharing Qmax \n", Qmax_action_idx );
 
-			const int choice { Quant::DEQUANTIZE_I( rand_q * Qmax_action_idx ) };
+			const int choice_q { rand_q * Qmax_action_idx };
+			const int choice { Quant::DEQUANTIZE_I( choice_q )  };
 			std::printf(
-				"\tExploit: choice %d, reference choice (no quant)%d \n",
-				choice, static_cast<int>( rand_f * Qmax_action_idx )
+				"\tExploit: quant choice %08x, choice %d, reference choice (no quant)%d \n",
+				choice_q, choice, static_cast<int>( rand_f * Qmax_action_idx )
 			);
 			///////
 
@@ -129,9 +134,10 @@ QLearner::train( void )
 
 		}
 
-		int next_state_idx {};
-		int Q_next_i {};
-		bool term {}, trunc {};
+		int next_state_idx { current_state_idx };
+		int Q_next_i { 0 };
+		bool term { false };
+		bool trunc { false };
 
 		FrozenLake::step(
 			action,
@@ -141,7 +147,7 @@ QLearner::train( void )
 		);
 		const int Q_next_q { Quant::QUANTIZE_I( Q_next_i ) };
 		std::printf(
-			"\tAfter step: row %d, col %d, next state %d, next reward %d ( quantized %08x ), term %d, trunc %d \n",
+			"\tAfter step: row %d, col %d, next state idx %d, next reward %d ( quantized %08x ), term %d, trunc %d \n",
 			row, col, next_state_idx, Q_next_i, Q_next_q, term, trunc
 		);
 		
@@ -156,14 +162,11 @@ QLearner::train( void )
 		int Q_cur { Q_state[ action ] };
 		std::printf( "\tCurrent reward: %08x \n", Q_cur );
 
-		const int Q_cur { Q_state[ action ] };
-		std::printf( "\tCurrent reward: %08x \n", Q_cur );
-
 		int Q_tmp { this->gamma_q * next_state_Qmax };
 		std::printf( "\tQ_tmp = gamma_q * next_state_Qmax = %08x \n", Q_tmp );
 
-		Q_tmp = Q_next + Quant::DEQUANTIZE_I( Q_tmp ) - Q_cur;
-		std::printf( "\tQ_next + DQ( Q_tmp ) - Q_cur = %08x \n", Q_tmp );
+		Q_tmp = Q_next_q + Quant::DEQUANTIZE_I( Q_tmp ) - Q_cur;
+		std::printf( "\tQ_tmp = Q_next + DQ( Q_tmp ) - Q_cur = %08x \n", Q_tmp );
 
 		Q_tmp *= this->alpha_q;
 		std::printf( "\tQ_tmp *= alpha_q = %08x \n", Q_tmp );
@@ -184,5 +187,85 @@ QLearner::train( void )
 			current_state_idx = next_state_idx;
 		}
 	}
+}
+
+void
+QLearner::predict( void )
+{
+
+	const int est_step_cnt { this->world_size << 1 };
+
+	// initialize result buffers
+	this->pred_actions
+		.reserve( est_step_cnt );
+	this->pred_state_idxs
+		.reserve( est_step_cnt );
+	this->pred_rewards_i
+		.reserve( est_step_cnt );
+
+	// 
+	int row { 0 };
+	int col { 0 };
+	int current_state_idx { 0 };
+	int next_state_idx { 0 };
+	int Q_next_i { 0 };
+	bool term { false };
+	bool trunc { false };
+
+	std::vector<int> Qmax_actions_buf( this->action_cnt, 0 );
+
+	int step { -1 };
+	while ( (!term) && !trunc )
+	{
+		++step;
+		std::printf( "\n\nPredict step %d \n", step );
+
+		const std::vector<int> &Q_state { this->Qtbl[ current_state_idx ] };
+		// exploit
+		int state_Qmax { -(1<<30) };
+		for ( const int Q: Q_state )
+		{
+			if ( Q > state_Qmax ) { state_Qmax = Q; }
+		}
+		std::printf( "\tstate %d max reward %08x \n", current_state_idx, state_Qmax );
+		int action { 0 };
+		int Qmax_action_idx { 0 };
+		for ( const int Q: Q_state )
+		{
+			if ( Q == state_Qmax )
+			{
+				Qmax_actions_buf[ Qmax_action_idx ] = action;
+				++Qmax_action_idx;
+			}
+			++action;
+		}
+		float rand_f {}; int rand_q {};
+		this->get_rand( rand_f, rand_q );
+		const int choice_q { rand_q * Qmax_action_idx };
+		const int choice { Quant::DEQUANTIZE_I( choice_q ) };
+		action = Qmax_action_buf[ choice ];
+
+		std::printf(
+			"\tquant choice %08x, choice %d, reference choice (no quant)%d, action %d \n",
+			choice_q, choice, static_cast<int>( rand_f * Qmax_action_idx ), action
+		);
+
+		FrozenLake::step(
+			action,
+			row, col,
+			next_state_idx, Q_next_i,
+			term, trunc
+		);
+
+		current_state_idx = next_state_idx;
+
+		this->pred_actions
+			.emplace_back( action );
+		this->pred_state_idxs
+			.emplace_back( next_state_idx );
+		this->pred_rewards_i
+			.emplace_back( Q_next_i );
+	}
+
 }
 
