@@ -13,7 +13,8 @@ package frozenlake_pkg;
 	{
 		LEFT = 0, RIGHT = 1,
 		UP   = 2, DOWN  = 3
-	} action_t;
+	} _action_enum_t;
+	typedef logic [ ACTION_WIDTH-1:0 ] action_t;
 
 	typedef enum logic [ 1:0 ]
 	{
@@ -50,16 +51,16 @@ package frozenlake_pkg;
 		next_gamestate_idx = 'h0;
 
 		case ( action )
-			LEFT:
+			2'b00: //LEFT
 				if ( col > 0 )
 					next_col = col - 1;
-			RIGHT:
+			2'b01: //RIGHT
 				if ( col < DIM-1 )
 					next_col = col + 1;
-			UP:
+			2'b10: //UP
 				if ( row > 0 )
 					next_row = row - 1;
-			DOWN:
+			2'b11: //DOWN
 				if ( row < DIM-1 )
 					next_row = row + 1;
 		endcase

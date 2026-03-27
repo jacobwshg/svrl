@@ -5,9 +5,11 @@
 import frozenlake_pkg::DIM;
 import frozenlake_pkg::WORLD_SIZE;
 import frozenlake_pkg::ACTION_CNT;
+
 import frozenlake_pkg::action_t;
 import frozenlake_pkg::gamestate_t;
 import frozenlake_pkg::GAMESTATES;
+
 import quant_pkg::QUANT;
 import quant_pkg::DEQUANT;
 
@@ -38,10 +40,12 @@ module q_learner
 	input  logic pred_full,
 	
 	output logic train_done,
+	output logic done,
 	output logic rand_rd_en,
 	output logic pred_wr_en,
-	output logic [ $clog2( WORLD_SIZE ) + $clog2( ACTION_CNT ) + REWARD_WIDTH-1:0 ]
-		pred_out
+	output logic [
+		$clog2( WORLD_SIZE ) + $clog2( ACTION_CNT ) + REWARD_WIDTH-1:0 
+	] pred_out
 );
 
 	localparam int DIM_WIDTH = $clog2( DIM );
@@ -161,6 +165,8 @@ module q_learner
 		gamestate_out <= GAMESTATES[ gamestate_rd_addr ];
 	end: rd_gamestate
 
+	assign done = 1'( fsm_state == S_DONE );
+
 	always_comb
 	begin
 		train_done_c = train_done;
@@ -208,7 +214,7 @@ module q_learner
 				// initialize rewards to 0
 				//Qtbl_wr_addr = cur_gamestate_idx;
 				Qtbl_din = 'sh0;
-				Qtbl_wr_en = 'b1;
+				Qtbl_wr_en = ~'b0;
 				if ( cur_gamestate_idx == WORLD_SIZE-1 )
 				begin
 					// At next clk edge, all state rows in Q-table will have
@@ -338,8 +344,7 @@ module q_learner
 			// set up Qmax_actions_buf BRAM read
 			S_EXPLOIT_ACTION_SETUP:
 			begin
-				Qmax_action_idx_c = DEQUANT( choice );
-				Qmax_action_rd_addr = Qmax_action_idx_c[ ACTION_WIDTH-1:0 ];
+				Qmax_action_rd_addr = DEQUANT( choice );
 				fsm_state_c = S_EXPLOIT_ACTION;
 			end
 			S_EXPLOIT_ACTION:
