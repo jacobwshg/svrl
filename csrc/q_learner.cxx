@@ -70,7 +70,7 @@ QLearner::train( void )
 		float rand_f {};
 		int   rand_q {};
 		this->get_rand( rand_f, rand_q );
-//		std::printf( "\n\nStep %d got rand %f ( %08x )\n", step, rand_f, rand_q );
+		std::printf( "\n\nStep %d got rand %f ( %08x )\n", step, rand_f, rand_q );
 
 		// rewards for actions in current state
 		const std::vector<int> &Q_state { Qtbl[ current_state_idx ] };
@@ -80,7 +80,7 @@ QLearner::train( void )
 		{
 			// explore
 			this->get_rand( rand_f, rand_q );
-//			std::printf( "\tExplore: got new rand %f ( %08x ) \n", rand_f, rand_q );
+			std::printf( "\tExplore: got new rand %f ( %08x ) \n", rand_f, rand_q );
 
 			const int choice_q { rand_q * this->action_cnt };
 			const int choice { Quant::DEQUANTIZE_I( choice_q ) };
@@ -96,7 +96,7 @@ QLearner::train( void )
 		{
 			// exploit
 			this->get_rand( rand_f, rand_q );
-//			std::printf( "\tExploit: got new rand %f ( %08x ) \n", rand_f, rand_q );
+			std::printf( "\tExploit: got new rand %f ( %08x ) \n", rand_f, rand_q );
 
 			//////////
 			int state_Qmax { -( 1<<30 ) };

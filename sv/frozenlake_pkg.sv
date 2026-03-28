@@ -69,7 +69,7 @@ package frozenlake_pkg;
 		// bits
 		next_gamestate_idx = { next_row, next_col };
 
-	endfunction
+	endfunction: step
 
 	function automatic void eval_gamestate(
 		input  gamestate_t gamestate,
@@ -81,7 +81,7 @@ package frozenlake_pkg;
 		trunc = 1'( gamestate == HOLE );
 		// generate logical reward ( no quantization )
 		reward = ( gamestate == GOAL ) ? 1'h1: 1'h0;
-	endfunction
+	endfunction: eval_gamestate
 
 endpackage: frozenlake_pkg
 

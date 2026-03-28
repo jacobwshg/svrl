@@ -44,7 +44,7 @@ module q_learner
 	output logic rand_rd_en,
 	output logic pred_wr_en,
 	output logic [
-		$clog2( WORLD_SIZE ) + $clog2( ACTION_CNT ) + REWARD_WIDTH-1:0 
+		$clog2( ACTION_CNT ) + $clog2( WORLD_SIZE ) + REWARD_WIDTH-1:0 
 	] pred_out
 );
 
@@ -233,6 +233,9 @@ module q_learner
 				begin
 					rand_rd_en = 1'b1;
 					rand_c = rand_in;
+
+					$display( "\n@%0t S_GET_RAND got rand %08h", $time, rand_c );
+
 					fsm_state_c = ( rand_in < EPSILON )
 						? S_EXPLORE_GET_RAND
 						: S_EXPLOIT_GET_RAND;
@@ -247,6 +250,9 @@ module q_learner
 				begin
 					rand_rd_en = 1'b1;
 					rand_c = rand_in;
+
+					$display( "@%0t S_EXPLORE_GET_RAND got rand %08h", $time, rand_c );
+
 					fsm_state_c = S_EXPLORE_CHOICE;
 				end
 			end
@@ -260,6 +266,9 @@ module q_learner
 			begin
 				// rand is quantized, so dequantize
 				action_c = DEQUANT( choice );
+
+				$display( "@%0t S_EXPLORE_ACTION choice: %08h action_c: %0d", time, choice, action_c );
+
 				fsm_state_c = S_TAKE_STEP;
 			end
 
@@ -270,6 +279,8 @@ module q_learner
 				begin
 					rand_rd_en = 1'b1;
 					rand_c = rand_in;
+
+					$display( "@%0t S_EXPLOIT_GET_RAND got rand %08h", $time, rand_c );
 
 					Qmax_is_next_c = 1'b0;
 
@@ -289,13 +300,15 @@ module q_learner
 					gamestate_Qmax_c = Qtbl_dout[ action ];
 				end
 
-				// if finding Q_max within next game state (updating reward, not exploiting),
+				// if still finding Q_max in next game state 
+				// ( updating reward, not exploiting ),
 				// hold read addr at next state
 				if ( Qmax_is_next )
 				begin
 					Qtbl_rd_addr = next_gamestate_idx;
 				end
 
+				// all action rewards seen
 				if ( action == ACTION_CNT-1 ) //DOWN
 				begin
 					Qmax_action_idx_c = 'h0;
@@ -445,6 +458,7 @@ module q_learner
 			S_STEP_TAIL:
 			begin
 				// flags set in S_AFTER_STEP
+				// if fell into hole or reached goal, reset game state
 				if ( term || trunc )
 				begin
 					cur_gamestate_idx_c = 'h0;
@@ -453,9 +467,9 @@ module q_learner
 				end
 				else
 				begin
-					// updated row and col had been registered at the end of
-					// the prev S_TAKE_STEP cycle
 					cur_gamestate_idx_c = next_gamestate_idx;
+					// updated row and col had been registered at the end of
+					// the prev S_TAKE_STEP cycle, so no update in this state
 				end
 
 				step_c = step + 1'h1;
@@ -486,8 +500,8 @@ module q_learner
 				begin
 					// next_gamestate_idx and Q_next were respectively updated 
 					// on the clk edge out of S_TAKE_STEP and S_AFTER_STEP
+					pred_out = { action, next_gamestate_idx, Q_next };
 					pred_wr_en = 1'b1;
-					pred_out = { next_gamestate_idx, action, Q_next };
 					cur_gamestate_idx_c = next_gamestate_idx;
 
 					fsm_state_c = ( term || trunc )
