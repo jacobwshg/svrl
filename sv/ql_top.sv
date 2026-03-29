@@ -25,15 +25,15 @@ module ql_top
 	input  logic [ DWIDTH-1:0 ] maxsteps_in,
 
 	input  logic signed [ DWIDTH-1:0 ] in_din,
-	input  logic out_rd_en, out_empty,
+	input  logic in_wr_en,
+	input  logic out_rd_en,
 
-	output logic in_wr_en, in_full,
+	output logic in_full,
 	output logic [ OUTWIDTH-1:0 ] out_dout,
+	output logic out_empty,
 
 	output logic train_done, done
 );
-
-	logic [ DWIDTH-1:0 ] steps;
 
 	logic signed [ globals_pkg::DWIDTH-1:0 ] in_dout;
 	logic in_rd_en, in_empty;

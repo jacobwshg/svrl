@@ -215,6 +215,9 @@ module q_learner
 		term_c  = term;
 		trunc_c = trunc;
 
+		// only written to downstream in S_PREDICT_OUT
+		pred_out = { action, next_gamestate_idx, Q_next };
+
 		case ( fsm_state )
 			S_INIT:
 			begin
@@ -507,7 +510,9 @@ module q_learner
 				begin
 					// next_gamestate_idx and Q_next were respectively updated 
 					// on the clk edge out of S_TAKE_STEP and S_AFTER_STEP
-					pred_out = { action, next_gamestate_idx, Q_next };
+
+					//pred_out = { action, next_gamestate_idx, Q_next };
+
 					pred_wr_en = 1'b1;
 					cur_gamestate_idx_c = next_gamestate_idx;
 

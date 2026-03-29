@@ -18,12 +18,12 @@ module my_uvm_tb;
 		.maxsteps_in ( vif.maxsteps_in ),
 
 		.in_din    ( vif.in_din ),
+		.in_wr_en  ( vif.in_wr_en ),
 		.out_rd_en ( vif.out_rd_en ),
-		.out_empty ( vif.out_empty ),
 
-		.in_wr_en ( vif.in_wr_en ),
-		.in_full  ( vif.in_full ),
-		.out_dout ( vif.out_dout ),
+		.in_full   ( vif.in_full ),
+		.out_dout  ( vif.out_dout ),
+		.out_empty ( vif.out_empty ),
 
 		.train_done ( vif.train_done ),
 		.done ( vif.done )
