@@ -3,7 +3,7 @@ package quant_pkg;
 
 	import globals_pkg::*;
 
-	localparam int FRAC_WIDTH = 10;
+	localparam int FRAC_WIDTH = 14;
 	localparam int Q_STEP = 1<<FRAC_WIDTH;
 
 	function automatic logic signed [ DWIDTH-1:0 ]
@@ -21,7 +21,7 @@ package quant_pkg;
 		// has 1 in the fractional bits
 		if ( x[ DWIDTH-1 ] && ( | x[ FRAC_WIDTH-1:0 ] ) )
 		begin
-			++dq;
+			dq = dq + 1'h1;
 		end
 
 		return dq;

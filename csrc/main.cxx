@@ -11,7 +11,7 @@ main()
 		alpha_f { 0.5f },
 		gamma_f { 0.7f },
 		epsilon_f { 0.2f };
-	const int max_steps { 3000 };
+	const int max_steps { 2000 };
 
 	QLearner ql(
 		alpha_f, gamma_f, epsilon_f,

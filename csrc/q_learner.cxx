@@ -84,13 +84,13 @@ QLearner::train( void )
 
 			const int choice_q { rand_q * this->action_cnt };
 			const int choice { Quant::DEQUANTIZE_I( choice_q ) };
-//			std::printf(
-//				"\tExplore: quant choice %08x, choice %d, reference choice (no quant): %d \n",
-//				choice_q, choice, static_cast<int>( rand_f * this->action_cnt )
-//			);
+			std::printf(
+				"\tExplore: quant choice %08x, choice %d, reference choice (no quant): %d \n",
+				choice_q, choice, static_cast<int>( rand_f * this->action_cnt )
+			);
 
 			action = choice;
-//			std::printf( "\tExplore: action %d \n", action );
+			std::printf( "\tExplore: action %d \n", action );
 		}
 		else
 		{
@@ -107,7 +107,7 @@ QLearner::train( void )
 					state_Qmax = Q;
 				}
 			}
-//			std::printf( "\tExploit: current state idx %d, Qmax %08x \n", current_state_idx, state_Qmax );
+			std::printf( "\tExploit: current state idx %d, Qmax %08x \n", current_state_idx, state_Qmax );
 
 			int Qmax_action_idx { 0 };
 			action = 0;
@@ -115,26 +115,26 @@ QLearner::train( void )
 			{
 				if ( Q == state_Qmax )
 				{
-//					std::printf( "\tExploit: action %d sharing Qmax \n", action );
+					std::printf( "\tExploit: action %d sharing Qmax \n", action );
 					Qmax_actions_buf[ Qmax_action_idx ] = action;
 					++Qmax_action_idx;
 				}
 				++action;
 			}
-//			std::printf( "\tExploit: %d actions sharing Qmax \n", Qmax_action_idx );
+			std::printf( "\tExploit: %d actions sharing Qmax \n", Qmax_action_idx );
 
 			const int choice_q { rand_q * Qmax_action_idx };
 			const int choice { Quant::DEQUANTIZE_I( choice_q )  };
-/*
+///*
 			std::printf(
 				"\tExploit: quant choice %08x, choice %d, reference choice (no quant)%d \n",
 				choice_q, choice, static_cast<int>( rand_f * Qmax_action_idx )
 			);
-*/
+//*/
 			///////
 
 			action = Qmax_actions_buf[ choice ];
-//			std::printf( "\tExploit: action %d \n", action );
+			std::printf( "\tExploit: action %d \n", action );
 
 		}
 

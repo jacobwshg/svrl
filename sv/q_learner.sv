@@ -297,6 +297,8 @@ module q_learner
 					action_c = 'h0; //LEFT;
 					gamestate_Qmax_c = QMIN;
 					fsm_state_c = S_FIND_QMAX;
+
+					$display( "@%0t \tExploit gamestate idx to read from for finding Qmax: %0d / %0d ", $time, cur_gamestate_idx, Qtbl_rd_addr  );
 				end
 			end
 			S_FIND_QMAX:
@@ -305,7 +307,10 @@ module q_learner
 				// we are reading from current gamestate's rewards;
 				// if S_AFTER_STEP, we are reading from next gamestate's rewards
 				//
-				$display( "@%0t \tExploit action: %0d, Qtbl_dout[ action ]: %08h, gamestate_Qmax: %08h", $time, action, Qtbl_dout[ action ], gamestate_Qmax );
+				$display(
+					"@%0t \tExploit Qtbl_dout: %0h, action: %0d, Qtbl_dout[ action ]: %08h, gamestate_Qmax: %08h",
+					$time, Qtbl_dout, action, Qtbl_dout[ action ], gamestate_Qmax
+				);
 				if ( $signed( Qtbl_dout[ action ] ) > $signed( gamestate_Qmax ) )
 				begin
 					$display( "@%0t \tExploit: current gamestate action has reward greater than Qmax ", $time );
@@ -348,6 +353,7 @@ module q_learner
 				//
 				if ( Qtbl_dout[ action ] == gamestate_Qmax )
 				begin
+					$display( "@%0t \tExploit action %0d sharing Qmax", $time, action );
 					Qmax_action_wr_addr = Qmax_action_idx;
 					Qmax_action_in = action[ ACTION_WIDTH-1:0 ];
 					Qmax_action_wr_en = 1'b1;
@@ -366,7 +372,7 @@ module q_learner
 			end
 			S_EXPLOIT_CHOICE:
 			begin
-				$display( "@%0t \tExploit rand: %08h, # Qmax actions: %0d", $time, rand_reg, Qmax_action_idx );
+				$display( "@%0t \tExploit rand: %08h, %0d actions sharing Qmax", $time, rand_reg, Qmax_action_idx );
 				choice_c = ( rand_reg * Qmax_action_idx );
 				fsm_state_c = S_EXPLOIT_ACTION_SETUP;
 			end
@@ -380,7 +386,7 @@ module q_learner
 			S_EXPLOIT_ACTION:
 			begin
 				action_c = Qmax_action_out;
-				$display( "@%0t \tExploit Qmax action: %0d", $time, action_c );
+				$display( "@%0t \tExploit action: %0d", $time, action_c );
 				fsm_state_c = S_TAKE_STEP;
 			end
 

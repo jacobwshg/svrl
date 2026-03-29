@@ -47,7 +47,8 @@ class my_uvm_scoreboard extends uvm_scoreboard;
 				"Predicted action %0d, gamestate idx %0d, reward %0d",
 				action, gamestate_idx, reward
 			);
-			`uvm_info( "SB_RUN", msg, UVM_LOW );
+
+			//`uvm_info( "SB_RUN", msg, UVM_LOW );
 
 			//compare_fifo.get( tx_cmp );
 			//comparison( tx_cmp, tx_out );
