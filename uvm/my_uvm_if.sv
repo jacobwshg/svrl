@@ -5,7 +5,7 @@ import uvm_pkg::*;
 interface my_uvm_if;
 	logic clk;
 	logic rst;
-	logic [ DWIDTH-1:0 ] maxsteps_in,
+	logic [ DWIDTH-1:0 ] maxsteps_in;
 
 	logic [ DWIDTH-1:0 ] in_din;
 	logic in_wr_en;

@@ -2,6 +2,10 @@
 /*
  * 4x4 grid
  */
+
+import globals_pkg::DWIDTH;
+import globals_pkg::REWARD_WIDTH;
+
 import frozenlake_pkg::DIM;
 import frozenlake_pkg::WORLD_SIZE;
 import frozenlake_pkg::ACTION_CNT;
@@ -10,32 +14,35 @@ import frozenlake_pkg::action_t;
 import frozenlake_pkg::gamestate_t;
 import frozenlake_pkg::GAMESTATES;
 
+import frozenlake_pkg::DIM_WIDTH;
+import frozenlake_pkg::ACTION_WIDTH;
+import frozenlake_pkg::GAMESTATE_IDX_WIDTH;
+import frozenlake_pkg::OUTWIDTH;
+
 import quant_pkg::QUANT;
 import quant_pkg::DEQUANT;
 
 module q_learner 
 #(
-	parameter int DWIDTH = 32,
+	parameter int DWIDTH = globals_pkg::DWIDTH,
+	parameter int REWARD_WIDTH = globals_pkg::REWARD_WIDTH,
 
 	parameter int DIM        = frozenlake_pkg::DIM,
 	parameter int WORLD_SIZE = frozenlake_pkg::WORLD_SIZE,
 	parameter int ACTION_CNT = frozenlake_pkg::ACTION_CNT,
-
 	parameter frozenlake_pkg::gamestate_t GAMESTATES [ 0:WORLD_SIZE-1 ] = 
 		frozenlake_pkg::GAMESTATES,
 
-	parameter int REWARD_WIDTH = DWIDTH,
-	parameter logic signed [ DWIDTH-1:0 ] ALPHA,
-	parameter logic signed [ DWIDTH-1:0 ] GAMMA,
-	parameter logic signed [ DWIDTH-1:0 ] EPSILON,
-	parameter int MAX_STEPS
+	parameter logic signed [ DWIDTH-1:0 ] ALPHA = globals_pkg::ALPHA,
+	parameter logic signed [ DWIDTH-1:0 ] GAMMA = globals_pkg::GAMMA,
+	parameter logic signed [ DWIDTH-1:0 ] EPSILON = globals_pkg::EPSILON
 )
 (
 	input  logic clk,
 	input  logic rst,
-	input  logic [ DWIDTH-1:0 ] steps,
+	input  logic [ DWIDTH-1:0 ] maxsteps_in,
 
-	input  logic rand_in,
+	input  logic signed [ DWIDTH-1:0 ] rand_in,
 	input  logic rand_empty,
 	input  logic pred_full,
 	
@@ -43,14 +50,12 @@ module q_learner
 	output logic done,
 	output logic rand_rd_en,
 	output logic pred_wr_en,
-	output logic [
-		$clog2( ACTION_CNT ) + $clog2( WORLD_SIZE ) + REWARD_WIDTH-1:0 
-	] pred_out
+	output logic [ frozenlake_pkg::OUTWIDTH-1:0 ] pred_out
 );
 
-	localparam int DIM_WIDTH = $clog2( DIM );
-	localparam int GAMESTATE_IDX_WIDTH = $clog2( WORLD_SIZE );
-	localparam int ACTION_WIDTH = $clog2( ACTION_CNT );
+	localparam int DIM_WIDTH = frozenlake_pkg::DIM_WIDTH;
+	localparam int GAMESTATE_IDX_WIDTH = frozenlake_pkg::GAMESTATE_IDX_WIDTH;
+	localparam int ACTION_WIDTH = frozenlake_pkg::ACTION_WIDTH;
 	localparam logic signed [ REWARD_WIDTH-1:0 ] QMIN = 1'h1 <<< ( REWARD_WIDTH-1 );
 
 	typedef enum logic [ 4:0 ]
@@ -102,6 +107,8 @@ module q_learner
 		.dout    ( Qmax_action_out )
 	);
 
+	logic [ DWIDTH-1:0 ] maxsteps_reg, step, step_c;
+
 	logic train_done_c;
 
 	logic [ ACTION_WIDTH:0 ] Qmax_action_idx, Qmax_action_idx_c;
@@ -113,8 +120,6 @@ module q_learner
 	logic Qmax_is_next, Qmax_is_next_c;
 
 	logic [ DWIDTH-1:0 ] choice, choice_c;
-
-	logic [ DWIDTH-1:0 ] step, step_c;
 
 	logic [ DIM_WIDTH-1:0 ]
 		row, row_c,
@@ -169,7 +174,9 @@ module q_learner
 
 	always_comb
 	begin
+		step_c = step;
 		train_done_c = train_done;
+
 		rand_rd_en = 1'b0;
 		pred_wr_en = 1'b0;
 		pred_out = 'hX;
@@ -267,7 +274,7 @@ module q_learner
 				// rand is quantized, so dequantize
 				action_c = DEQUANT( choice );
 
-				$display( "@%0t S_EXPLORE_ACTION choice: %08h action_c: %0d", time, choice, action_c );
+				$display( "@%0t S_EXPLORE_ACTION choice: %08h action_c: %0d", $time, choice, action_c );
 
 				fsm_state_c = S_TAKE_STEP;
 			end
@@ -473,7 +480,7 @@ module q_learner
 				end
 
 				step_c = step + 1'h1;
-				if ( step_c == MAX_STEPS )
+				if ( step_c == maxsteps_reg )
 				begin
 					train_done_c = 1'b1;
 				end
@@ -531,6 +538,10 @@ module q_learner
 	begin
 		if ( rst )
 		begin
+			maxsteps_reg <= maxsteps_in;
+			step <= 'h0;
+			train_done <= 1'b0;
+
 			fsm_state <= S_INIT;
 			rand_reg <= 'h0;
 			gamestate_Qmax <= QMIN;
@@ -549,10 +560,12 @@ module q_learner
 			term  <= 1'b0;
 			trunc <= 1'b0;
 
-			train_done <= 1'b0;
 		end
 		else
 		begin
+			step <= step_c; 
+			train_done <= train_done_c;
+
 			fsm_state <= fsm_state_c;
 			rand_reg <= rand_c;
 			gamestate_Qmax <= gamestate_Qmax_c;
@@ -570,8 +583,6 @@ module q_learner
 			//Qtbl_rd_addr <= Qtbl_rd_addr_c;
 			term  <= term_c;
 			trunc <= trunc_c;
-
-			train_done <= train_done_c;
 		end
 	end
 

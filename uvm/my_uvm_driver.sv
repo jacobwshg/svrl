@@ -22,12 +22,12 @@ class my_uvm_driver extends uvm_driver#( my_uvm_transaction );
 	virtual task drive();
 		my_uvm_transaction tx_in;
 
-		@ posedge ( vif.rst );
-		@ negedge ( vif.rst );
+		@ ( posedge vif.rst );
+		@ ( negedge vif.rst );
 
 		forever
 		begin
-			vif.rand_in = 'h0;
+			vif.in_din = 'h0;
 			vif.in_wr_en = 1'b0;
 
 			@ ( negedge vif.clk )
@@ -39,14 +39,12 @@ class my_uvm_driver extends uvm_driver#( my_uvm_transaction );
 					vif.in_din = tx_in.rand_q;
 					vif.in_wr_en = 1'b1;
 					
-					mon_ap_compare.write( tx_in );
-
 					seq_item_port.item_done();
 				end
 			end
 		end
 
-		@ ( negedge vif.clock );
+		@ ( negedge vif.clk );
 		vif.in_din = 'h0;
 		vif.in_wr_en = 1'b0;
 

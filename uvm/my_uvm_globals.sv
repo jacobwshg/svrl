@@ -6,7 +6,7 @@ localparam int CLOCK_PERIOD = 10;
 
 localparam string INFILE_RAND_F = "../sim/uniforms-f.txt";
 localparam string INFILE_RAND_Q = "../sim/uniforms-q.txt";
-localparam string RAND_CNT = 1000;
+localparam int RAND_CNT = 1000;
 
 localparam int DWIDTH = 32;
 localparam int REWARD_WIDTH = DWIDTH;

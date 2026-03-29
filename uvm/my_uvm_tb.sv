@@ -25,7 +25,7 @@ module my_uvm_tb;
 		.in_full  ( vif.in_full ),
 		.out_dout ( vif.out_dout ),
 
-		.train_done ( vif.done ),
+		.train_done ( vif.train_done ),
 		.done ( vif.done )
 	);
 

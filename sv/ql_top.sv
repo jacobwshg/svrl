@@ -45,7 +45,7 @@ module ql_top
 		.FIFO_DATA_WIDTH  ( DWIDTH ),
 		.FIFO_BUFFER_SIZE ( FIFO_DEPTH )
 	) fifo_in (
-		.rst    ( rst ),
+		.reset  ( rst ),
 		.wr_clk ( clk ),
 		.wr_en  ( in_wr_en ),
 		.din    ( in_din ),
@@ -82,7 +82,7 @@ module ql_top
 		.FIFO_DATA_WIDTH  ( OUTWIDTH ),
 		.FIFO_BUFFER_SIZE ( FIFO_DEPTH )
 	) fifo_out (
-		.rst    ( rst ),
+		.reset  ( rst ),
 		.wr_clk ( clk ),
 		.wr_en  ( out_wr_en ),
 		.din    ( out_din ),

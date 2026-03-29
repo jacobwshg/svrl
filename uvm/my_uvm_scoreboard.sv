@@ -42,7 +42,7 @@ class my_uvm_scoreboard extends uvm_scoreboard;
 
 			action = tx_out.pred_action;
 			gamestate_idx = tx_out.pred_gamestate_idx;
-			reward = tx_out.pred_gamestate_reward;
+			reward = tx_out.pred_reward;
 			msg = $sformatf(
 				"Predicted action %0d, gamestate idx %0d, reward %0d",
 				action, gamestate_idx, reward

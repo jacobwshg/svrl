@@ -36,12 +36,12 @@ class my_uvm_sequence extends uvm_sequence#( my_uvm_transaction );
 		}
 		*/
 
-		logic signed [ DWIDTH-1:0 ] rand_q_mem [ 0:RAND_CNT ];
-		$readmemh( INFILE_RAND_Q, rand_q_mem );
 		int rand_idx = 0;
 		logic signed [ DWIDTH-1:0 ] rand_q = 'h0;
+		logic signed [ DWIDTH-1:0 ] rand_q_mem [ 0:RAND_CNT ];
+		$readmemh( INFILE_RAND_Q, rand_q_mem );
 
-		while ( !vif.train_done )
+		forever
 		begin
 			tx_in = my_uvm_transaction::type_id::create(
 				.name( "tx_in" )
@@ -55,6 +55,7 @@ class my_uvm_sequence extends uvm_sequence#( my_uvm_transaction );
 			rand_q = rand_q_mem[ rand_idx ];
 			rand_idx += 1;
 
+			// send in a random number
 			tx_in.rand_q = rand_q;
 
 			finish_item( tx_in );

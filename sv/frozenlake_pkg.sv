@@ -1,4 +1,6 @@
 
+import globals_pkg::REWARD_WIDTH;
+
 package frozenlake_pkg;
 
 	localparam int DIM = 4;
@@ -8,6 +10,9 @@ package frozenlake_pkg;
 	localparam int DIM_WIDTH = $clog2( DIM );
 	localparam int GAMESTATE_IDX_WIDTH  = $clog2( WORLD_SIZE );
 	localparam int ACTION_WIDTH = $clog2( ACTION_CNT );
+	localparam int OUTWIDTH = ACTION_WIDTH
+		+ GAMESTATE_IDX_WIDTH
+		+ globals_pkg::REWARD_WIDTH;
 
 	typedef enum logic [ ACTION_WIDTH-1:0 ]
 	{
