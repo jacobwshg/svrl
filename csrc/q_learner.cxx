@@ -13,13 +13,13 @@ QLearner::QLearner(
 	int world_size,
 	int action_cnt
 ):
-	alpha_f   { alpha_f },
-	gamma_f   { gamma_f },
-	epsilon_f { epsilon_f },
-
 	alpha_q   { Quant::QUANTIZE_F( alpha_f ) },
 	gamma_q   { Quant::QUANTIZE_F( gamma_f ) },
 	epsilon_q { Quant::QUANTIZE_F( epsilon_f ) },
+
+	alpha_f   { alpha_f },
+	gamma_f   { gamma_f },
+	epsilon_f { epsilon_f },
 
 	max_steps  { max_steps },
 	world_size { world_size },
