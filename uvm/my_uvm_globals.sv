@@ -14,7 +14,7 @@ localparam int REWARD_WIDTH = DWIDTH;
 localparam int FRAC_WIDTH = 14;
 localparam logic signed [ DWIDTH-1:0 ] ALPHA   = 32'h2000; // 0.5
 localparam logic signed [ DWIDTH-1:0 ] GAMMA   = 32'h2ccc; // 0.7
-localparam logic signed [ DWIDTH-1:0 ] EPSILON = 32'hccc;  // 0.2
+localparam logic signed [ DWIDTH-1:0 ] EPSILON = 32'h1999; // 0.4
 
 //localparam int MAX_STEPS = 3000;
 localparam int MAX_STEPS = 2000;

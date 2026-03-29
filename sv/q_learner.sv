@@ -24,6 +24,10 @@ import quant_pkg::DEQUANT;
 
 module q_learner 
 #(
+	parameter logic signed [ DWIDTH-1:0 ] ALPHA   = globals_pkg::ALPHA,
+	parameter logic signed [ DWIDTH-1:0 ] GAMMA   = globals_pkg::GAMMA,
+	parameter logic signed [ DWIDTH-1:0 ] EPSILON = globals_pkg::EPSILON,
+
 	parameter int DWIDTH = globals_pkg::DWIDTH,
 	parameter int REWARD_WIDTH = globals_pkg::REWARD_WIDTH,
 
@@ -31,11 +35,7 @@ module q_learner
 	parameter int WORLD_SIZE = frozenlake_pkg::WORLD_SIZE,
 	parameter int ACTION_CNT = frozenlake_pkg::ACTION_CNT,
 	parameter frozenlake_pkg::gamestate_t GAMESTATES [ 0:WORLD_SIZE-1 ] = 
-		frozenlake_pkg::GAMESTATES,
-
-	parameter logic signed [ DWIDTH-1:0 ] ALPHA = globals_pkg::ALPHA,
-	parameter logic signed [ DWIDTH-1:0 ] GAMMA = globals_pkg::GAMMA,
-	parameter logic signed [ DWIDTH-1:0 ] EPSILON = globals_pkg::EPSILON
+		frozenlake_pkg::GAMESTATES
 )
 (
 	input  logic clk,
@@ -588,6 +588,11 @@ module q_learner
 	begin
 		if ( rst )
 		begin
+			$display(
+				"q_learner .ALPHA = %08h, .GAMMA = %08h, .EPSILON = %08h",
+				ALPHA, GAMMA, EPSILON
+			);
+
 			maxsteps_reg <= maxsteps_in;
 			step <= 'h0;
 			train_done <= 1'b0;

@@ -8,11 +8,19 @@ import my_uvm_package::*;
 
 module my_uvm_tb;
 
+////
+//localparam logic signed [ DWIDTH-1:0 ] ALPHA   = 32'h2000; // 0.5
+//localparam logic signed [ DWIDTH-1:0 ] GAMMA   = 32'h2ccc; // 0.7
+//localparam logic signed [ DWIDTH-1:0 ] EPSILON = 32'h1999; // 0.4
+
 	my_uvm_if vif();
 
 	// DUT
-	ql_top dut
-	(
+	ql_top #(
+		.ALPHA   ( 32'h2000 ),
+		.GAMMA   ( 32'h2ccc ),
+		.EPSILON ( 32'h1999 )
+	) dut (
 		.clk ( vif.clk ),
 		.rst ( vif.rst ),
 		.maxsteps_in ( vif.maxsteps_in ),

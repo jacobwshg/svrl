@@ -16,6 +16,10 @@ import frozenlake_pkg::OUTWIDTH;
 
 module ql_top
 #(
+	parameter int ALPHA      = globals_pkg::ALPHA,
+	parameter int GAMMA      = globals_pkg::GAMMA,
+	parameter int EPSILON    = globals_pkg::EPSILON,
+
 	parameter int FIFO_DEPTH = globals_pkg::FIFO_DEPTH,
 	parameter int DWIDTH     = globals_pkg::DWIDTH,
 	parameter int OUTWIDTH   = frozenlake_pkg::OUTWIDTH
@@ -57,17 +61,17 @@ module ql_top
 	);
 
 	q_learner #(
+		.ALPHA   ( ALPHA ),
+		.GAMMA   ( GAMMA ),
+		.EPSILON ( EPSILON ),
+
 		.DWIDTH ( globals_pkg::DWIDTH ),
 		.REWARD_WIDTH ( globals_pkg::REWARD_WIDTH ),
 
 		.DIM        ( frozenlake_pkg::DIM ),
 		.WORLD_SIZE ( frozenlake_pkg::WORLD_SIZE ),
 		.ACTION_CNT ( frozenlake_pkg::ACTION_CNT ),
-		.GAMESTATES ( frozenlake_pkg::GAMESTATES ),
-
-		.ALPHA   ( globals_pkg::ALPHA ),
-		.GAMMA   ( globals_pkg::GAMMA ),
-		.EPSILON ( globals_pkg::EPSILON )
+		.GAMESTATES ( frozenlake_pkg::GAMESTATES )
 	) ql (
 		.clk ( clk ), .rst ( rst ), .maxsteps_in ( maxsteps_in ),
 		.rand_in ( in_dout ), .rand_empty ( in_empty ),

@@ -8,9 +8,9 @@ int
 main()
 {
 	const float
-		alpha_f { 0.5f },
-		gamma_f { 0.7f },
-		epsilon_f { 0.2f };
+		alpha_f   { 0.5f },
+		gamma_f   { 0.7f },
+		epsilon_f { 0.4f };
 	const int max_steps { 2000 };
 
 	QLearner ql(

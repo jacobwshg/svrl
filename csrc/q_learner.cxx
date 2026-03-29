@@ -41,6 +41,12 @@ QLearner::QLearner(
 	}
 
 	this->rand_cnt = static_cast<int>( rand_f_mem.size() );
+
+	std::printf(
+		"\nQLearner alpha_q %08x, gamma_q %08x, epsilon_q %08x\n",
+		this->alpha_q, this->gamma_q, this->epsilon_q 
+	);
+
 }
 
 void
