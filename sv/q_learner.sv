@@ -244,7 +244,7 @@ module q_learner
 					rand_rd_en = 1'b1;
 					rand_c = rand_in;
 
-					$display( "\n\n@%0t Step %0d got rand %08h", $time, step, rand_c );
+					$display( "\n\n@%0t step %0d, gamestate idx %0d, got rand %08h", $time, step, cur_gamestate_idx, rand_c );
 
 					fsm_state_c = ( rand_in < EPSILON )
 						? S_EXPLORE_GET_RAND
@@ -298,7 +298,7 @@ module q_learner
 					gamestate_Qmax_c = QMIN;
 					fsm_state_c = S_FIND_QMAX;
 
-					$display( "@%0t \tExploit gamestate idx to read from for finding Qmax: %0d / %0d ", $time, cur_gamestate_idx, Qtbl_rd_addr  );
+					$display( "@%0t \tExploit find Qmax read gamestate idx: %0d / %0d ", $time, cur_gamestate_idx, Qtbl_rd_addr  );
 				end
 			end
 			S_FIND_QMAX:
@@ -313,7 +313,7 @@ module q_learner
 				);
 				if ( $signed( Qtbl_dout[ action ] ) > $signed( gamestate_Qmax ) )
 				begin
-					$display( "@%0t \tExploit: current gamestate action has reward greater than Qmax ", $time );
+					//$display( "@%0t \tExploit: current gamestate action has reward greater than Qmax ", $time );
 					gamestate_Qmax_c = Qtbl_dout[ action ];
 				end
 
@@ -329,7 +329,10 @@ module q_learner
 				if ( action == ACTION_CNT-1 ) //DOWN
 				begin
 
-					$display( "@%0t \tExploit next gamestate idx: %0d, Qmax: %08h", $time, next_gamestate_idx, gamestate_Qmax_c );
+					if ( Qmax_is_next )
+						$display( "@%0t \tnext gamestate %0d Qmax: %08h", $time, Qtbl_rd_addr, gamestate_Qmax_c );
+					else
+						$display( "@%0t \texploit state %0d Qmax: %08h", $time, Qtbl_rd_addr, gamestate_Qmax_c );
 
 					Qmax_action_idx_c = 'h0;
 					action_c = 'h0; //LEFT;
@@ -437,8 +440,10 @@ module q_learner
 					Qmax_is_next_c = 1'b1;
 
 					gamestate_Qmax_c = QMIN;
+					// TODO: bug: resetting action will lose the chosen action
+					// in this state
 					action_c = 'h0; //LEFT;
-					// to obtain Qmax in next state when updating Q_cur,
+					// to obtain Qmax in next gamestate when updating Q_cur,
 					// reuse S_FIND_QMAX from exploit datapath, but since
 					// we assert Qmax_is_next, it will return to S_MUL_GAMMA
 					//
@@ -473,6 +478,9 @@ module q_learner
 				// both alpha and previous Q_tmp are quantized;
 				// dequantize to get once-quantized product
 				Q_cur_c = Q_cur + DEQUANT( Q_tmp );
+
+				$display( "@%0t \tstep %0d final Q_cur: %08h", $time, step, Q_cur_c );
+
 				Qtbl_din = Q_cur_c;
 				//Qtbl_wr_addr = cur_gamestate_idx;
 				Qtbl_wr_en[ action ] = 1'b1;

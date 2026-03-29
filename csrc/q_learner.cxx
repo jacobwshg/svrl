@@ -70,7 +70,7 @@ QLearner::train( void )
 		float rand_f {};
 		int   rand_q {};
 		this->get_rand( rand_f, rand_q );
-		std::printf( "\n\nStep %d got rand %f ( %08x )\n", step, rand_f, rand_q );
+		std::printf( "\n\nstep %d, state idx %d, got rand %f ( %08x )\n", step, current_state_idx, rand_f, rand_q );
 
 		// rewards for actions in current state
 		const std::vector<int> &Q_state { Qtbl[ current_state_idx ] };
@@ -163,7 +163,7 @@ QLearner::train( void )
 		{
 			if ( Q > next_state_Qmax ) { next_state_Qmax = Q; }
 		}
-//		std::printf( "\tNext state max reward: %08x \n", next_state_Qmax );
+		std::printf( "\tnext state Qmax: %08x \n", next_state_Qmax );
 
 		int Q_cur { Q_state[ action ] };
 //		std::printf( "\tCurrent reward: %08x \n", Q_cur );
@@ -178,7 +178,7 @@ QLearner::train( void )
 //		std::printf( "\tQ_tmp *= alpha_q = %08x \n", Q_tmp );
 
 		Q_cur += Quant::DEQUANTIZE_I( Q_tmp );
-//		std::printf( "\tQ_cur += DQ( Q_tmp ) = %08x \n", Q_cur );
+		std::printf( "\tstep %0d final Q_cur += DQ( Q_tmp ) = %08x \n", step, Q_cur );
 
 		// write back current reward
 		Qtbl[ current_state_idx ][ action ] = Q_cur;
