@@ -294,7 +294,7 @@ module q_learner
 
 					Qmax_is_next_c = 1'b0;
 
-					action_c = 'h0; //LEFT;
+					Qmax_action_idx_c = 'h0;
 					gamestate_Qmax_c = QMIN;
 					fsm_state_c = S_FIND_QMAX;
 
@@ -303,18 +303,20 @@ module q_learner
 			end
 			S_FIND_QMAX:
 			begin
+				// iterate over all actions with Qmax_action_idx
+				// 
 				// if prev cycle's state was S_EXPLOIT_GET_RAND,
 				// we are reading from current gamestate's rewards;
 				// if S_AFTER_STEP, we are reading from next gamestate's rewards
 				//
 				$display(
-					"@%0t \tExploit Qtbl_dout: %0h, action: %0d, Qtbl_dout[ action ]: %08h, gamestate_Qmax: %08h",
-					$time, Qtbl_dout, action, Qtbl_dout[ action ], gamestate_Qmax
+					"@%0t \tExploit Qtbl_dout: %0h, action: %0d, reward Qtbl_dout[ Qmax_action_idx ]: %08h, gamestate_Qmax: %08h",
+					$time, Qtbl_dout, Qmax_action_idx, Qtbl_dout[ Qmax_action_idx ], gamestate_Qmax
 				);
-				if ( $signed( Qtbl_dout[ action ] ) > $signed( gamestate_Qmax ) )
+				if ( $signed( Qtbl_dout[ Qmax_action_idx ] ) > $signed( gamestate_Qmax ) )
 				begin
 					//$display( "@%0t \tExploit: current gamestate action has reward greater than Qmax ", $time );
-					gamestate_Qmax_c = Qtbl_dout[ action ];
+					gamestate_Qmax_c = Qtbl_dout[ Qmax_action_idx ];
 				end
 
 				// if still finding Q_max in next game state 
@@ -326,7 +328,7 @@ module q_learner
 				end
 
 				// all action rewards seen
-				if ( action == ACTION_CNT-1 ) //DOWN
+				if ( Qmax_action_idx == ACTION_CNT-1 ) //DOWN
 				begin
 
 					if ( Qmax_is_next )
@@ -335,21 +337,35 @@ module q_learner
 						$display( "@%0t \texploit state %0d Qmax: %08h", $time, Qtbl_rd_addr, gamestate_Qmax_c );
 
 					Qmax_action_idx_c = 'h0;
-					action_c = 'h0; //LEFT;
-					fsm_state_c = Qmax_is_next
-						? S_MUL_GAMMA
-						: S_COUNT_QMAX_ACTIONS;
+
+					if ( Qmax_is_next )
+					begin
+						// preserve action set in S_EXPLOIT_ACTION
+						fsm_state_c = S_MUL_GAMMA;
+					end
+					else
+					begin
+						// reset action for iterating in below state
+						action_c = 'h0;
+						Qmax_action_idx_c = 'h0;
+						fsm_state_c = S_COUNT_QMAX_ACTIONS;
+					end
+
 				end
 				else
 				begin
-					action_c = action + 1'h1;
+					Qmax_action_idx_c = Qmax_action_idx + 1'h1;
 				end
 			end
 			S_COUNT_QMAX_ACTIONS:
 			begin
-				// iterate over all actions, adding actions sharing Qmax to
-				// buffer and incrementing Qmax_action_idx as
-				// needed (whenever action has shared Qmax).
+				// iterate over all actions with `action`, adding actions sharing Qmax 
+				// to buffer and incrementing Qmax_action_idx _as needed_ 
+				// (whenever action has shared Qmax).
+				//
+				// This also makes Qmax_action_idx come out as the count for
+				// number of actions sharing Qmax (1 above highest
+				// Qmax-sharing action idx). 
 				//
 				// in any cycle, Qmax_action_idx <= action (equal if 
 				// all actions share Qmax)
@@ -363,9 +379,13 @@ module q_learner
 					Qmax_action_idx_c = Qmax_action_idx + 1'h1;
 				end
 
+				// finished comparing all action rewards with Qmax found in
+				// above state
 				if ( action == ACTION_CNT-1 ) //DOWN
 				begin
-					action_c = 'h0; //LEFT;
+					// resetting action is not strictly needed, since it will
+					// be set in S_EXPLOIT_ACTION soon
+					//action_c = 'h0;
 					fsm_state_c = S_EXPLOIT_CHOICE;
 				end
 				else
@@ -437,16 +457,19 @@ module q_learner
 
 					//Qtbl_rd_addr_c = next_gamestate_idx;
 					Qtbl_rd_addr = next_gamestate_idx;
-					Qmax_is_next_c = 1'b1;
-
 					gamestate_Qmax_c = QMIN;
+
 					// TODO: bug: resetting action will lose the chosen action
-					// in this state
-					action_c = 'h0; //LEFT;
+					// in this gamestate; use Qmax_action_idx to iterate over
+					// next gamestate actions instead.
+					//action_c = 'h0;
+					Qmax_action_idx_c = 'h0;
+
 					// to obtain Qmax in next gamestate when updating Q_cur,
 					// reuse S_FIND_QMAX from exploit datapath, but since
 					// we assert Qmax_is_next, it will return to S_MUL_GAMMA
 					//
+					Qmax_is_next_c = 1'b1;
 					fsm_state_c = S_FIND_QMAX;
 				end
 			end
