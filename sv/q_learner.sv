@@ -275,7 +275,7 @@ module q_learner
 			S_EXPLORE_ACTION:
 			begin
 				// rand is quantized, so dequantize
-				action_c = DEQUANT( choice );
+				action_c = quant_pkg::DEQUANT( choice );
 
 				$display( "@%0t \tExplore quantized choice: %08h, action: %0d", $time, choice, action_c );
 
@@ -402,7 +402,7 @@ module q_learner
 			// set up Qmax_actions_buf BRAM read
 			S_EXPLOIT_ACTION_SETUP:
 			begin
-				Qmax_action_rd_addr = DEQUANT( choice );
+				Qmax_action_rd_addr = quant_pkg::DEQUANT( choice );
 				$display( "@%0t \tExploit quantized choice: %08h, dequant: %0d", $time, choice, Qmax_action_rd_addr );
 				fsm_state_c = S_EXPLOIT_ACTION;
 			end
@@ -453,17 +453,17 @@ module q_learner
 				else
 				begin
 					// for training; build new Q_cur bottom-up
-					// start by reading from Qtbl at computed next gamestate
+					Q_next_c = quant_pkg::QUANT( Q_next_c );
 
+					// read from Qtbl at computed next gamestate
 					//Qtbl_rd_addr_c = next_gamestate_idx;
 					Qtbl_rd_addr = next_gamestate_idx;
-					gamestate_Qmax_c = QMIN;
-
-					// TODO: bug: resetting action will lose the chosen action
+					// FIXED: bug: resetting action will lose the chosen action
 					// in this gamestate; use Qmax_action_idx to iterate over
 					// next gamestate actions instead.
 					//action_c = 'h0;
 					Qmax_action_idx_c = 'h0;
+					gamestate_Qmax_c = QMIN;
 
 					// to obtain Qmax in next gamestate when updating Q_cur,
 					// reuse S_FIND_QMAX from exploit datapath, but since
@@ -476,10 +476,6 @@ module q_learner
 
 			S_MUL_GAMMA:
 			begin
-				// next reward needs to be quantized only on the training
-				// datapath, not the prediction datapath
-				Q_next_c = QUANT( Q_next );
-
 				// Qmax is from *next* game state ( S_AFTER_STEP (~train_done) 
 				// -> S_FIND_QMAX -> S_MUL_GAMMA )
 				Q_tmp_c = GAMMA * gamestate_Qmax;
@@ -488,7 +484,7 @@ module q_learner
 			S_ADD_SUB:
 			begin
 				Q_tmp_c = Q_next - Q_cur;
-				Q_tmp_c = Q_tmp_c + DEQUANT( Q_tmp ); 
+				Q_tmp_c = Q_tmp_c + quant_pkg::DEQUANT( Q_tmp ); 
 				fsm_state_c = S_MUL_ALPHA;
 			end
 			S_MUL_ALPHA:
@@ -500,7 +496,7 @@ module q_learner
 			begin
 				// both alpha and previous Q_tmp are quantized;
 				// dequantize to get once-quantized product
-				Q_cur_c = Q_cur + DEQUANT( Q_tmp );
+				Q_cur_c = Q_cur + quant_pkg::DEQUANT( Q_tmp );
 
 				$display( "@%0t \tstep %0d final Q_cur: %08h", $time, step, Q_cur_c );
 
