@@ -35,7 +35,7 @@ module my_uvm_tb;
 			.scope( "ifs" ), .name( "vif" ), .val( vif )
 		);
 
-		run_test("my_uvm_test");		
+		run_test( "my_uvm_test" );
 	end
 
 	initial

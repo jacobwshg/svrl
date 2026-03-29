@@ -38,13 +38,13 @@ class my_uvm_sequence extends uvm_sequence#( my_uvm_transaction );
 
 		int rand_idx = 0;
 		logic signed [ DWIDTH-1:0 ] rand_q = 'h0;
-		logic signed [ DWIDTH-1:0 ] rand_q_mem [ 0:RAND_CNT ];
+		logic signed [ DWIDTH-1:0 ] rand_q_mem [ 0:RAND_CNT-1 ];
 		$readmemh( INFILE_RAND_Q, rand_q_mem );
 
 		forever
 		begin
 			tx_in = my_uvm_transaction::type_id::create(
-				.name( "tx_in" )
+				.name( "tx_in" ), .contxt( get_full_name() )
 			);
 			start_item( tx_in );
 
@@ -57,6 +57,7 @@ class my_uvm_sequence extends uvm_sequence#( my_uvm_transaction );
 
 			// send in a random number
 			tx_in.rand_q = rand_q;
+			//$display( "@%0t seqr sending rand %08h, in tx: %08h", $time, rand_q, tx_in.rand_q );
 
 			finish_item( tx_in );
 		end

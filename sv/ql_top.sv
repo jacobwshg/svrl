@@ -35,7 +35,7 @@ module ql_top
 	output logic train_done, done
 );
 
-	logic signed [ globals_pkg::DWIDTH-1:0 ] in_dout;
+	logic signed [ DWIDTH-1:0 ] in_dout;
 	logic in_rd_en, in_empty;
 
 	logic [ OUTWIDTH-1:0 ] out_din;

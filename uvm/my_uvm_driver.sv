@@ -27,20 +27,27 @@ class my_uvm_driver extends uvm_driver#( my_uvm_transaction );
 
 		forever
 		begin
-			vif.in_din = 'h0;
-			vif.in_wr_en = 1'b0;
-
 			@ ( negedge vif.clk )
 			begin
+
+				vif.in_din   = 'h0;
+				vif.in_wr_en = 1'b0;
+
 				if ( !vif.in_full )
 				begin
 					seq_item_port.get_next_item( tx_in );
-					
-					vif.in_din = tx_in.rand_q;
+
+					vif.in_din   = tx_in.rand_q;
 					vif.in_wr_en = 1'b1;
-					
+					//$display( "@%0t drvr sending rand %08h, in_wr_en: %0b", $time, tx_in.rand_q, vif.in_wr_en );
+
 					seq_item_port.item_done();
 				end
+				//else
+				//begin
+				//	vif.in_din   = 'hX;
+				//	vif.in_wr_en = 1'b0;
+				//end
 			end
 		end
 

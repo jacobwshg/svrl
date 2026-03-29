@@ -15,7 +15,9 @@ localparam int FRAC_WIDTH = 14;
 localparam logic signed [ DWIDTH-1:0 ] ALPHA   = 32'h2000; // 0.5
 localparam logic signed [ DWIDTH-1:0 ] GAMMA   = 32'h2ccc; // 0.7
 localparam logic signed [ DWIDTH-1:0 ] EPSILON = 32'hccc;  // 0.2
-localparam int MAX_STEPS = 3000;
+
+//localparam int MAX_STEPS = 3000;
+localparam int MAX_STEPS = 100;
 
 localparam int DIM = 4;
 localparam int WORLD_SIZE = DIM ** 2;

@@ -37,5 +37,4 @@ vsim\
 do wave.do
 
 run -all
-quit
 
