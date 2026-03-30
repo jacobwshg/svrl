@@ -24,15 +24,18 @@ class my_uvm_monitor_output extends uvm_monitor;
 	virtual task run_phase( uvm_phase phase );
 
 		my_uvm_transaction tx_out;
+		string msg;
 
 		@ ( posedge vif.rst );	
 		@ ( negedge vif.rst );	
 
-		while ( ~vif.done )
+		vif.out_rd_en = 1'b0;
+
+		forever
 		begin	
+			@ ( negedge vif.clk );
 			vif.out_rd_en = 1'b0;
 
-			@ ( negedge vif.clk );
 			if ( !vif.out_empty )
 			begin
 				vif.out_rd_en = 1'b1;
@@ -45,6 +48,8 @@ class my_uvm_monitor_output extends uvm_monitor;
 				} = vif.out_dout;
 
 				mon_ap_output.write( tx_out ); 
+				if ( vif.done )
+					break;
 			end
 		end
 	endtask: run_phase

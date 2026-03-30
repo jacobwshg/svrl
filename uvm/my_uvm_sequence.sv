@@ -21,8 +21,15 @@ endclass
 class my_uvm_sequence extends uvm_sequence#( my_uvm_transaction );
 	`uvm_object_utils( my_uvm_sequence )
 
+	virtual my_uvm_if vif;
+
 	function new( string name = "" );
 		super.new( name );
+
+		uvm_resource_db#( virtual my_uvm_if )::read_by_name(
+			.scope( "ifs" ), .name( "vif" ), .val( vif )
+		);
+
 	endfunction: new
 
 	task body();
@@ -39,10 +46,19 @@ class my_uvm_sequence extends uvm_sequence#( my_uvm_transaction );
 		int rand_idx = 0;
 		logic signed [ DWIDTH-1:0 ] rand_q = 'h0;
 		logic signed [ DWIDTH-1:0 ] rand_q_mem [ 0:RAND_CNT-1 ];
+
 		$readmemh( INFILE_RAND_Q, rand_q_mem );
 
-		forever
+		//forever
+		for ( int i=0; i<MAX_STEPS*2 + WORLD_SIZE; ++i )
 		begin
+		/*
+			`uvm_info(
+				"SEQ_RUN",
+				$sformatf( "vif.done: %0b", vif.done),
+				UVM_LOW
+			);
+		*/
 			tx_in = my_uvm_transaction::type_id::create(
 				.name( "tx_in" ), .contxt( get_full_name() )
 			);
@@ -60,7 +76,10 @@ class my_uvm_sequence extends uvm_sequence#( my_uvm_transaction );
 			//$display( "@%0t seqr sending rand %08h, in tx: %08h", $time, rand_q, tx_in.rand_q );
 
 			finish_item( tx_in );
+
 		end
+
+		wait ( vif.done === 1'b1 );
 
 		#300;
 	endtask: body

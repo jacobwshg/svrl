@@ -253,7 +253,7 @@ module q_learner
 				//Qtbl_rd_addr_c = cur_gamestate_idx;
 			end
 
-			// Explore
+			// explore
 			S_EXPLORE_GET_RAND:
 			begin
 				if ( ~rand_empty )
@@ -261,7 +261,7 @@ module q_learner
 					rand_rd_en = 1'b1;
 					rand_c = rand_in;
 
-					$display( "@%0t \tExplore got rand %08h", $time, rand_c );
+					$display( "@%0t \texplore got rand %08h", $time, rand_c );
 
 					fsm_state_c = S_EXPLORE_CHOICE;
 				end
@@ -277,12 +277,12 @@ module q_learner
 				// rand is quantized, so dequantize
 				action_c = quant_pkg::DEQUANT( choice );
 
-				$display( "@%0t \tExplore quantized choice: %08h, action: %0d", $time, choice, action_c );
+				$display( "@%0t \texplore quantized choice: %08h, action: %0d", $time, choice, action_c );
 
 				fsm_state_c = S_TAKE_STEP;
 			end
 
-			// Exploit
+			// exploit
 			S_EXPLOIT_GET_RAND:
 			begin
 				if ( ~rand_empty )
@@ -290,15 +290,13 @@ module q_learner
 					rand_rd_en = 1'b1;
 					rand_c = rand_in;
 
-					$display( "@%0t \tExploit got rand %08h", $time, rand_c );
+					$display( "@%0t \texploit got rand %08h", $time, rand_c );
 
 					Qmax_is_next_c = 1'b0;
 
 					Qmax_action_idx_c = 'h0;
 					gamestate_Qmax_c = QMIN;
 					fsm_state_c = S_FIND_QMAX;
-
-					$display( "@%0t \tExploit find Qmax read gamestate idx: %0d / %0d ", $time, cur_gamestate_idx, Qtbl_rd_addr  );
 				end
 			end
 			S_FIND_QMAX:
@@ -309,13 +307,14 @@ module q_learner
 				// we are reading from current gamestate's rewards;
 				// if S_AFTER_STEP, we are reading from next gamestate's rewards
 				//
+				/*
 				$display(
-					"@%0t \tExploit Qtbl_dout: %0h, action: %0d, reward Qtbl_dout[ Qmax_action_idx ]: %08h, gamestate_Qmax: %08h",
+					"@%0t \texploit Qtbl_dout: %0h, action: %0d, reward Qtbl_dout[ Qmax_action_idx ]: %08h, gamestate_Qmax: %08h",
 					$time, Qtbl_dout, Qmax_action_idx, Qtbl_dout[ Qmax_action_idx ], gamestate_Qmax
 				);
+				*/
 				if ( $signed( Qtbl_dout[ Qmax_action_idx ] ) > $signed( gamestate_Qmax ) )
 				begin
-					//$display( "@%0t \tExploit: current gamestate action has reward greater than Qmax ", $time );
 					gamestate_Qmax_c = Qtbl_dout[ Qmax_action_idx ];
 				end
 
@@ -372,7 +371,7 @@ module q_learner
 				//
 				if ( Qtbl_dout[ action ] == gamestate_Qmax )
 				begin
-					$display( "@%0t \tExploit action %0d sharing Qmax", $time, action );
+					//$display( "@%0t \texploit action %0d sharing Qmax", $time, action );
 					Qmax_action_wr_addr = Qmax_action_idx;
 					Qmax_action_in = action[ ACTION_WIDTH-1:0 ];
 					Qmax_action_wr_en = 1'b1;
@@ -395,7 +394,7 @@ module q_learner
 			end
 			S_EXPLOIT_CHOICE:
 			begin
-				$display( "@%0t \tExploit rand: %08h, %0d actions sharing Qmax", $time, rand_reg, Qmax_action_idx );
+				//$display( "@%0t \texploit rand: %08h, %0d actions sharing Qmax", $time, rand_reg, Qmax_action_idx );
 				choice_c = ( rand_reg * Qmax_action_idx );
 				fsm_state_c = S_EXPLOIT_ACTION_SETUP;
 			end
@@ -403,13 +402,13 @@ module q_learner
 			S_EXPLOIT_ACTION_SETUP:
 			begin
 				Qmax_action_rd_addr = quant_pkg::DEQUANT( choice );
-				$display( "@%0t \tExploit quantized choice: %08h, dequant: %0d", $time, choice, Qmax_action_rd_addr );
+				$display( "@%0t \texploit quantized choice: %08h, dequant: %0d", $time, choice, Qmax_action_rd_addr );
 				fsm_state_c = S_EXPLOIT_ACTION;
 			end
 			S_EXPLOIT_ACTION:
 			begin
 				action_c = Qmax_action_out;
-				$display( "@%0t \tExploit action: %0d", $time, action_c );
+				$display( "@%0t \texploit action: %0d", $time, action_c );
 				fsm_state_c = S_TAKE_STEP;
 			end
 
@@ -560,8 +559,8 @@ module q_learner
 					);
 
 					pred_wr_en = 1'b1;
-					cur_gamestate_idx_c = next_gamestate_idx;
 
+					cur_gamestate_idx_c = next_gamestate_idx;
 					fsm_state_c = ( term || trunc )
 						? S_DONE
 						: S_EXPLOIT_GET_RAND;
@@ -570,12 +569,6 @@ module q_learner
 
 			S_DONE:
 			begin
-				/*
-				if ( rst )
-				begin
-					fsm_state_c = S_INIT;
-				end
-				*/
 			end
 
 			default:
