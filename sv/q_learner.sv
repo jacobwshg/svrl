@@ -554,6 +554,11 @@ module q_learner
 
 					//pred_out = { action, next_gamestate_idx, Q_next };
 
+					$display(
+						"@%0t Predicted action %0d, next gamestate idx %0d, reward %0d",
+						$time, action, next_gamestate_idx, Q_next
+					);
+
 					pred_wr_en = 1'b1;
 					cur_gamestate_idx_c = next_gamestate_idx;
 
