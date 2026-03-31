@@ -284,8 +284,12 @@ QLearner::predict( void )
 void
 QLearner::print_Qtbl( void ) const
 {
+	std::printf( "Qtbl\n" );
+	int i_state { -1 };
 	for ( const std::vector<int> &Q_state : this->Qtbl )
 	{
+		++i_state;
+		std::printf( "[%4d]\t", i_state );
 		for ( const int Q: Q_state )
 		{
 			std::printf( "%08x\t", Q );
