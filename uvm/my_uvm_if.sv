@@ -1,5 +1,4 @@
 
-
 import uvm_pkg::*;
 
 interface my_uvm_if;

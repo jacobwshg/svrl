@@ -43,11 +43,8 @@ class my_uvm_driver extends uvm_driver#( my_uvm_transaction );
 
 					seq_item_port.item_done();
 				end
-				//else
-				//begin
-				//	vif.in_din   = 'hX;
-				//	vif.in_wr_en = 1'b0;
-				//end
+
+				//if ( vif.done ) break;
 			end
 		end
 
