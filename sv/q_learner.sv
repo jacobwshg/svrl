@@ -239,7 +239,7 @@ module q_learner
 			end
 			S_GET_RAND:
 			begin
-				if ( ~rand_empty )
+				if ( !rand_empty )
 				begin
 					rand_rd_en = 1'b1;
 					rand_c = rand_in;
@@ -256,7 +256,7 @@ module q_learner
 			// explore
 			S_EXPLORE_GET_RAND:
 			begin
-				if ( ~rand_empty )
+				if ( !rand_empty )
 				begin
 					rand_rd_en = 1'b1;
 					rand_c = rand_in;
@@ -285,7 +285,7 @@ module q_learner
 			// exploit
 			S_EXPLOIT_GET_RAND:
 			begin
-				if ( ~rand_empty )
+				if ( !rand_empty )
 				begin
 					rand_rd_en = 1'b1;
 					rand_c = rand_in;
@@ -475,7 +475,7 @@ module q_learner
 
 			S_MUL_GAMMA:
 			begin
-				// Qmax is from *next* game state ( S_AFTER_STEP (~train_done) 
+				// Qmax is from *next* game state ( S_AFTER_STEP [ !train_done ] 
 				// -> S_FIND_QMAX -> S_MUL_GAMMA )
 				Q_tmp_c = GAMMA * gamestate_Qmax;
 				fsm_state_c = S_ADD_SUB;
@@ -528,7 +528,7 @@ module q_learner
 					train_done_c = 1'b1;
 				end
 
-				if ( ~train_done_c )
+				if ( !train_done_c )
 				begin
 					fsm_state_c = S_GET_RAND;
 				end
@@ -546,7 +546,7 @@ module q_learner
 
 			S_PREDICT_OUT:
 			begin
-				if ( ~pred_full )
+				if ( !pred_full )
 				begin
 					// next_gamestate_idx and Q_next were respectively updated 
 					// on the clk edge out of S_TAKE_STEP and S_AFTER_STEP
