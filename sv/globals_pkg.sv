@@ -10,7 +10,5 @@ package globals_pkg;
 	localparam logic signed [ DWIDTH-1:0 ] GAMMA   = 32'h2000; // 0.5
 	localparam logic signed [ DWIDTH-1:0 ] EPSILON = 32'h0ccc; // 0.2
 
-	localparam int MAX_STEPS = 3000;
-
 endpackage: globals_pkg
 
