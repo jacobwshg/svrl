@@ -17,9 +17,9 @@ module my_uvm_tb;
 
 	// DUT
 	ql_top #(
-		.ALPHA   ( 32'h2000 ),
-		.GAMMA   ( 32'h2ccc ),
-		.EPSILON ( 32'h1999 )
+		.ALPHA   ( ALPHA ),
+		.GAMMA   ( GAMMA ),
+		.EPSILON ( EPSILON )
 	) dut (
 		.clk ( vif.clk ),
 		.rst ( vif.rst ),
