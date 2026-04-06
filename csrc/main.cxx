@@ -8,13 +8,18 @@ int
 main()
 {
 	const float
-		alpha_f   { 0.5f },
-		gamma_f   { 0.7f },
-		epsilon_f { 0.4f };
-	const int max_steps { 2000 };
+		alpha_f   { 0.01f },
+		gamma_f   { 0.999f },
+		epsilon_f { 1.0f },
+		decay_f   { 0.0001f },
+		eps_min_f { 0.001f }
+		;
+	const int max_steps { 50000 };
 
 	QLearner ql(
 		alpha_f, gamma_f, epsilon_f,
+		decay_f, eps_min_f,
+
 		max_steps,
 		FrozenLake::WORLD_SIZE,
 		FrozenLake::ACTION_CNT

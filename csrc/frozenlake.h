@@ -6,7 +6,7 @@
 
 namespace FrozenLake
 {
-	constexpr int DIM { 4 };
+	constexpr int DIM { 8 };
 	constexpr int WORLD_SIZE { DIM * DIM };
 	constexpr int ACTION_CNT { 4 };
 
@@ -19,10 +19,17 @@ namespace FrozenLake
 
 	static constexpr std::array< GameState, WORLD_SIZE > STATES
 	{
-		GameState::FROZEN, GameState::FROZEN, GameState::FROZEN, GameState::FROZEN,
-		GameState::FROZEN, GameState::HOLE,   GameState::FROZEN, GameState::HOLE,
-		GameState::FROZEN, GameState::FROZEN, GameState::FROZEN, GameState::HOLE,
-		GameState::HOLE,   GameState::FROZEN, GameState::FROZEN, GameState::GOAL,
+		GameState::FROZEN, GameState::FROZEN, GameState::FROZEN, GameState::FROZEN, GameState::FROZEN, GameState::FROZEN, GameState::FROZEN, GameState::FROZEN,
+		GameState::FROZEN, GameState::FROZEN, GameState::FROZEN, GameState::FROZEN, GameState::FROZEN, GameState::FROZEN, GameState::FROZEN, GameState::FROZEN,
+
+		GameState::FROZEN, GameState::FROZEN, GameState::FROZEN, GameState::HOLE,   GameState::FROZEN, GameState::FROZEN, GameState::FROZEN, GameState::FROZEN,
+		GameState::FROZEN, GameState::FROZEN, GameState::FROZEN, GameState::FROZEN, GameState::FROZEN, GameState::HOLE,   GameState::FROZEN, GameState::FROZEN,
+
+		GameState::FROZEN, GameState::FROZEN, GameState::FROZEN, GameState::HOLE,   GameState::FROZEN, GameState::FROZEN, GameState::FROZEN, GameState::FROZEN,
+		GameState::FROZEN, GameState::HOLE,   GameState::HOLE,   GameState::FROZEN, GameState::FROZEN, GameState::FROZEN, GameState::HOLE,   GameState::FROZEN,
+
+		GameState::FROZEN, GameState::HOLE,   GameState::FROZEN, GameState::FROZEN, GameState::HOLE,   GameState::FROZEN, GameState::HOLE,   GameState::FROZEN,
+		GameState::FROZEN, GameState::FROZEN, GameState::FROZEN, GameState::HOLE,   GameState::FROZEN, GameState::FROZEN, GameState::FROZEN, GameState::GOAL,
 	};
 
 	enum class Action: int

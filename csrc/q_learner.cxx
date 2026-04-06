@@ -9,6 +9,9 @@ QLearner::QLearner(
 	float alpha_f,
 	float gamma_f,
 	float epsilon_f,
+	float decay_f,
+	float eps_min_f,
+
 	int max_steps,
 	int world_size,
 	int action_cnt
@@ -16,10 +19,14 @@ QLearner::QLearner(
 	alpha_q   { Quant::QUANTIZE_F( alpha_f ) },
 	gamma_q   { Quant::QUANTIZE_F( gamma_f ) },
 	epsilon_q { Quant::QUANTIZE_F( epsilon_f ) },
+	decay_q   { Quant::QUANTIZE_F( decay_f ) },
+	eps_min_q { Quant::QUANTIZE_F( eps_min_f ) },
 
 	alpha_f   { alpha_f },
 	gamma_f   { gamma_f },
 	epsilon_f { epsilon_f },
+	decay_f   { decay_f },
+	eps_min_f { eps_min_f },
 
 	max_steps  { max_steps },
 	world_size { world_size },
@@ -42,9 +49,16 @@ QLearner::QLearner(
 
 	this->rand_cnt = static_cast<int>( rand_f_mem.size() );
 
+	std::printf( "\nQLearner\n" );
+
 	std::printf(
-		"\nQLearner alpha_q %08x, gamma_q %08x, epsilon_q %08x\n",
-		this->alpha_q, this->gamma_q, this->epsilon_q 
+		"\talpha_f %0f, gamma_f %0f, epsilon_f %0f, decay_f %0f, eps_min_f %0f \n",
+		this->alpha_f, this->gamma_f, this->epsilon_f, this->decay_f, this->eps_min_f
+	);
+
+	std::printf(
+		"\talpha_q %08x, gamma_q %08x, epsilon_q %08x, decay_q %08x, eps_min_q %08x \n",
+		this->alpha_q, this->gamma_q, this->epsilon_q, this->decay_q, this->eps_min_q
 	);
 
 }
@@ -73,10 +87,13 @@ QLearner::train( void )
 
 	for ( int step = 0; step < this->max_steps; ++step )
 	{
+
+		std::printf( "step %0d state idx %d epsilon_f %0f, epsilon_q %08x \n", step, current_state_idx, this->epsilon_f, this->epsilon_q );
+
 		float rand_f {};
 		int   rand_q {};
 		this->get_rand( rand_f, rand_q );
-		std::printf( "\n\nstep %d, state idx %d, got rand %f ( %08x )\n", step, current_state_idx, rand_f, rand_q );
+		//std::printf( "\n\nstep %d, state idx %d, got rand %f ( %08x )\n", step, current_state_idx, rand_f, rand_q );
 
 		// rewards for actions in current state
 		const std::vector<int> &Q_state { Qtbl[ current_state_idx ] };
@@ -86,23 +103,24 @@ QLearner::train( void )
 		{
 			// explore
 			this->get_rand( rand_f, rand_q );
-			std::printf( "\tExplore: got new rand %f ( %08x ) \n", rand_f, rand_q );
+			//std::printf( "\texplore: got new rand %f ( %08x ) \n", rand_f, rand_q );
 
 			const int choice_q { rand_q * this->action_cnt };
 			const int choice { Quant::DEQUANTIZE_I( choice_q ) };
+		/*
 			std::printf(
-				"\tExplore: quant choice %08x, choice %d, reference choice (no quant): %d \n",
+				"\texplore: quant choice %08x, choice %d, reference choice (no quant): %d \n",
 				choice_q, choice, static_cast<int>( rand_f * this->action_cnt )
 			);
-
+		*/
 			action = choice;
-			std::printf( "\tExplore: action %d \n", action );
+			//std::printf( "\texplore: action %d \n", action );
 		}
 		else
 		{
 			// exploit
 			this->get_rand( rand_f, rand_q );
-			std::printf( "\tExploit: got new rand %f ( %08x ) \n", rand_f, rand_q );
+			//std::printf( "\texploit: got new rand %f ( %08x ) \n", rand_f, rand_q );
 
 			//////////
 			int state_Qmax { -( 1<<30 ) };
@@ -113,7 +131,7 @@ QLearner::train( void )
 					state_Qmax = Q;
 				}
 			}
-			std::printf( "\tExploit: current state idx %d, Qmax %08x \n", current_state_idx, state_Qmax );
+			//std::printf( "\texploit: current state idx %d, Qmax %08x \n", current_state_idx, state_Qmax );
 
 			int Qmax_action_idx { 0 };
 			action = 0;
@@ -121,26 +139,26 @@ QLearner::train( void )
 			{
 				if ( Q == state_Qmax )
 				{
-					std::printf( "\tExploit: action %d sharing Qmax \n", action );
+					//std::printf( "\texploit: action %d sharing Qmax \n", action );
 					Qmax_actions_buf[ Qmax_action_idx ] = action;
 					++Qmax_action_idx;
 				}
 				++action;
 			}
-			std::printf( "\tExploit: %d actions sharing Qmax \n", Qmax_action_idx );
+			//std::printf( "\texploit: %d actions sharing Qmax \n", Qmax_action_idx );
 
 			const int choice_q { rand_q * Qmax_action_idx };
 			const int choice { Quant::DEQUANTIZE_I( choice_q )  };
-///*
+			/*
 			std::printf(
-				"\tExploit: quant choice %08x, choice %d, reference choice (no quant)%d \n",
+				"\texploit: quant choice %08x, choice %d, reference choice (no quant)%d \n",
 				choice_q, choice, static_cast<int>( rand_f * Qmax_action_idx )
 			);
-//*/
+			*/
 			///////
 
 			action = Qmax_actions_buf[ choice ];
-			std::printf( "\tExploit: action %d \n", action );
+			//std::printf( "\texploit: action %d \n", action );
 
 		}
 
@@ -156,12 +174,12 @@ QLearner::train( void )
 			term, trunc
 		);
 		const int Q_next_q { Quant::QUANTIZE_I( Q_next_i ) };
-/*
+		/*
 		std::printf(
 			"\tAfter step: row %d, col %d, next state idx %d, next reward %d ( quantized %08x ), term %d, trunc %d \n",
 			row, col, next_state_idx, Q_next_i, Q_next_q, term, trunc
 		);
-*/
+		*/
 		
 		const std::vector<int> &Q_next_state { Qtbl[ next_state_idx ] };
 		int next_state_Qmax { -( 1<<30 ) };
@@ -169,25 +187,37 @@ QLearner::train( void )
 		{
 			if ( Q > next_state_Qmax ) { next_state_Qmax = Q; }
 		}
-		std::printf( "\tnext state Qmax: %08x \n", next_state_Qmax );
+		//std::printf( "\tnext state Qmax: %08x \n", next_state_Qmax );
 
 		int Q_cur { Q_state[ action ] };
-//		std::printf( "\tCurrent reward: %08x \n", Q_cur );
+		//std::printf( "\tCurrent reward: %08x \n", Q_cur );
 
 		int Q_tmp { this->gamma_q * next_state_Qmax };
-//		std::printf( "\tQ_tmp = gamma_q * next_state_Qmax = %08x \n", Q_tmp );
+		//std::printf( "\tQ_tmp = gamma_q * next_state_Qmax = %08x \n", Q_tmp );
 
 		Q_tmp = Q_next_q + Quant::DEQUANTIZE_I( Q_tmp ) - Q_cur;
-//		std::printf( "\tQ_tmp = Q_next + DQ( Q_tmp ) - Q_cur = %08x \n", Q_tmp );
+		//std::printf( "\tQ_tmp = Q_next + DQ( Q_tmp ) - Q_cur = %08x \n", Q_tmp );
 
 		Q_tmp *= this->alpha_q;
-//		std::printf( "\tQ_tmp *= alpha_q = %08x \n", Q_tmp );
+		//std::printf( "\tQ_tmp *= alpha_q = %08x \n", Q_tmp );
 
 		Q_cur += Quant::DEQUANTIZE_I( Q_tmp );
-		std::printf( "\tstep %0d final Q_cur += DQ( Q_tmp ) = %08x \n", step, Q_cur );
+		//std::printf( "\tstep %0d final Q_cur += DQ( Q_tmp ) = %08x \n", step, Q_cur );
+
 
 		// write back current reward
 		Qtbl[ current_state_idx ][ action ] = Q_cur;
+
+		// decay epsilon
+		if ( this->epsilon_q > this->eps_min_q )
+		{
+			this->epsilon_q = Quant::DEQUANTIZE_I( this->epsilon_q * ( Quant::Q_STEP - this->decay_q ) );
+			this->epsilon_f = Quant::DEQUANTIZE_F ( this->epsilon_q );
+		}
+		else
+		{
+			//std::printf( "\t\tepsilon_q %08x <= eps_min_q %08x\n", this->epsilon_q, this->eps_min_q );
+		}
 
 		if ( term || trunc )
 		{

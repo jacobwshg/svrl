@@ -15,6 +15,8 @@ private:
 	int alpha_q   {};
 	int gamma_q   {};
 	int epsilon_q {};
+	int decay_q   {};
+	int eps_min_q {};
 
 	// only store quantized rewards
 	std::vector< std::vector<int> > Qtbl {};
@@ -30,6 +32,8 @@ public:
 	float alpha_f   { 0.5f };
 	float gamma_f   { 0.5f };
 	float epsilon_f { 0.2f };
+	float decay_f   { 0.0f };
+	float eps_min_f { 0.0f };
 
 	int max_steps  {};
 	int world_size { FrozenLake::WORLD_SIZE };
@@ -43,6 +47,9 @@ public:
 		float alpha_f,
 		float gamma_f,
 		float epsilon_f,
+		float decay_f,
+		float eps_min_f,
+
 		int max_steps,
 		int world_size,
 		int action_cnt 
