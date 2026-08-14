@@ -15,11 +15,17 @@ module bram
 	/* synthesis syn_ramstyle = "block_ram" */
 	;
 
+	logic [ BRAM_ADDR_WIDTH-1:0 ] rd_addr_r;
+
 	always_ff @ ( posedge clock ) begin
-		dout <= mem[ rd_addr ];
 		if ( wr_en )
+		begin
 			mem[ wr_addr ] <= din; 
+		end
+		rd_addr_r <= rd_addr;
 	end
+
+	assign dout = mem[ rd_addr_r ];
 
 endmodule
 
